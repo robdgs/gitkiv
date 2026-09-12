@@ -4,16 +4,22 @@ import NewCommitForm from "./new-commit-form";
 
 type Lock = { repoId: string; branch: string; author: string; lockedAt: number; expiresAt: string };
 type Receipt = { entityKey: string; txHash: string };
-type DurationPreset = "10s" | "40s" | "1m";
-
-const DURATION_OPTIONS: { value: DurationPreset; label: string }[] = [
-  { value: "10s", label: "10s" },
-  { value: "40s", label: "40s" },
-  { value: "1m", label: "1 min" },
-];
 
 const inputClass =
   "bg-[#3d2632] border border-[#6b4552] rounded-md px-3 py-1.5 text-sm text-[#fff8fa] focus:outline-none focus:border-[#f06fa8]";
+const selectClass =
+  "bg-[#3d2632] border border-[#6b4552] rounded-md px-2 py-1.5 text-sm text-[#fff8fa] focus:outline-none focus:border-[#f06fa8] cursor-pointer";
+
+const MAX_DAYS = 7; // matches the server's MAX_LOCK_SECONDS cap (7 days)
+
+function formatDuration(totalSeconds: number): string {
+  const d = Math.floor(totalSeconds / 86400);
+  const h = Math.floor((totalSeconds % 86400) / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  const parts = [d && `${d}d`, h && `${h}h`, m && `${m}m`, s && `${s}s`].filter(Boolean);
+  return parts.length > 0 ? parts.join(" ") : "0s";
+}
 
 // Mission 02 (Built to expire): while a lock entity is queryable, commits
 // are blocked. Nothing here ever deletes it — this panel just polls the
@@ -25,7 +31,11 @@ export default function BranchLockPanel({ repoId, branch }: { repoId: string; br
   const [checked, setChecked] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [author, setAuthor] = useState("");
-  const [duration, setDuration] = useState<DurationPreset>("40s");
+  const [days, setDays] = useState(0);
+  const [hours, setHours] = useState(0);
+  const [minutes, setMinutes] = useState(0);
+  const [seconds, setSeconds] = useState(40);
+  const totalSeconds = days * 86400 + hours * 3600 + minutes * 60 + seconds;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<Receipt | null>(null);
@@ -72,7 +82,7 @@ export default function BranchLockPanel({ repoId, branch }: { repoId: string; br
       const res = await fetch("/api/locks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ repoId, branch, author, preset: duration }),
+        body: JSON.stringify({ repoId, branch, author, durationSeconds: totalSeconds }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to lock branch.");
@@ -157,33 +167,76 @@ export default function BranchLockPanel({ repoId, branch }: { repoId: string; br
           />
           <div>
             <label className="text-xs text-[#dfa8b7] block mb-1">Lock for</label>
-            <div className="flex gap-2">
-              {DURATION_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setDuration(opt.value)}
-                  className={`px-3 py-1.5 rounded-md border text-sm cursor-pointer transition-colors ${
-                    duration === opt.value
-                      ? "border-[#c98799] bg-[#c98799]/15 text-[#c98799]"
-                      : "border-[#6b4552] text-[#fff8fa] hover:border-[#c98799]"
-                  }`}
+            <div className="flex gap-2 flex-wrap">
+              <div className="flex flex-col gap-1">
+                <select
+                  value={days}
+                  onChange={(e) => setDays(Number(e.target.value))}
+                  className={selectClass}
                 >
-                  {opt.label}
-                </button>
-              ))}
+                  {Array.from({ length: MAX_DAYS + 1 }, (_, i) => i).map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs text-[#dfa8b7] text-center">days</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <select
+                  value={hours}
+                  onChange={(e) => setHours(Number(e.target.value))}
+                  className={selectClass}
+                >
+                  {Array.from({ length: 24 }, (_, i) => i).map((h) => (
+                    <option key={h} value={h}>
+                      {h}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs text-[#dfa8b7] text-center">hours</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <select
+                  value={minutes}
+                  onChange={(e) => setMinutes(Number(e.target.value))}
+                  className={selectClass}
+                >
+                  {Array.from({ length: 60 }, (_, i) => i).map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs text-[#dfa8b7] text-center">minutes</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <select
+                  value={seconds}
+                  onChange={(e) => setSeconds(Number(e.target.value))}
+                  className={selectClass}
+                >
+                  {Array.from({ length: 60 }, (_, i) => i).map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs text-[#dfa8b7] text-center">seconds</span>
+              </div>
             </div>
+            <p className="text-xs text-[#dfa8b7] mt-2">
+              = {formatDuration(totalSeconds)} (~{Math.max(1, Math.ceil(totalSeconds / 2))} blocks)
+            </p>
           </div>
           {error && <p className="text-sm font-semibold text-[#f06fa8]">{error}</p>}
           <div className="flex gap-2">
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || totalSeconds <= 0}
               className="px-3 py-1.5 rounded-md border border-[#c98799] bg-[#c98799]/20 text-[#c98799] text-sm hover:bg-[#c98799]/30 cursor-pointer disabled:opacity-50"
             >
-              {loading
-                ? "Locking on Arkiv…"
-                : `Lock branch for ${DURATION_OPTIONS.find((o) => o.value === duration)?.label}`}
+              {loading ? "Locking on Arkiv…" : `Lock branch for ${formatDuration(totalSeconds)}`}
             </button>
             <button
               type="button"

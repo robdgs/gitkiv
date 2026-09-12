@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getRepoFromArkiv, getCommitsFromArkiv } from "@/lib/arkiv/read";
+import { getRepoFromArkiv, getCommitsFromArkiv, getBranchesFromArkiv, getStarCount } from "@/lib/arkiv/read";
 import BranchSwitcher from "./branch-switcher";
 import BranchLockPanel from "./branch-lock-panel";
 import CommitFileLink from "./commit-file-link";
 import SwarmActivityLog from "./swarm-activity-log";
 import LiveFeed from "./live-feed";
+import StarButton from "./star-button";
 
 export const dynamic = "force-dynamic";
 
@@ -25,18 +26,28 @@ export default async function RepoDetailPage({
   const branch = branchParam || repo.defaultBranch;
   // Arkiv compound attribute query on (repoId, branch[, author]) — no
   // sqlite, subgraph, Ponder or Postgres pipeline in this read path.
-  const commits = await getCommitsFromArkiv(repoId, branch, author);
+  const [commits, realBranches, starCount] = await Promise.all([
+    getCommitsFromArkiv(repoId, branch, author),
+    getBranchesFromArkiv(repoId),
+    getStarCount(repoId),
+  ]);
+  // Repos created before branches existed as entities have none yet —
+  // fall back to the repo's own defaultBranch rather than an empty list.
+  const branches = realBranches.length > 0 ? realBranches.map((b) => b.name) : [repo.defaultBranch];
 
   return (
     <div>
-      <Link href="/" className="text-sm text-[#dfa8b7] hover:text-[#f06fa8]">
-        ← All repositories
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link href="/" className="text-sm text-[#dfa8b7] hover:text-[#f06fa8]">
+          ← All repositories
+        </Link>
+        <StarButton repoId={repoId} initialCount={starCount} />
+      </div>
 
       <h1 className="text-xl font-bold text-[#fff8fa] mt-2 mb-1">{repo.id}</h1>
       <p className="text-sm text-[#dfa8b7] mb-4">{repo.description}</p>
 
-      <BranchSwitcher repoId={repoId} currentBranch={branch} currentAuthor={author} />
+      <BranchSwitcher repoId={repoId} branches={branches} currentBranch={branch} currentAuthor={author} />
 
       <BranchLockPanel repoId={repoId} branch={branch} />
 

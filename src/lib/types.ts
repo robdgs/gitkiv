@@ -6,6 +6,11 @@ export type Repo = {
   description: string;
 };
 
+export type Branch = {
+  repoId: string;
+  name: string;
+};
+
 export type Commit = {
   hash: string;
   repoId: string; // "owner/name"

@@ -1,12 +1,17 @@
 import Link from "next/link";
-import { getReposFromArkiv } from "@/lib/arkiv/read";
+import { getReposFromArkiv, getAllStarCounts } from "@/lib/arkiv/read";
 import NewRepoForm from "./new-repo-form";
 
 // Every request queries Arkiv live — no build-time snapshot, no cache.
 export const dynamic = "force-dynamic";
 
 export default async function RepoListPage() {
-  const repos = await getReposFromArkiv();
+  const [repos, starCounts] = await Promise.all([getReposFromArkiv(), getAllStarCounts()]);
+  const stars = new Map(starCounts.map((s) => [s.repoId, s.count]));
+  const starredRepos = repos
+    .map((repo) => ({ ...repo, stars: stars.get(repo.id) ?? 0 }))
+    .filter((repo) => repo.stars > 0)
+    .sort((a, b) => b.stars - a.stars);
 
   return (
     <div>
@@ -38,6 +43,28 @@ export default async function RepoListPage() {
 ⠀⠀⠀⠀⠀⠀⠀⠀⣴⣿⣿⣿⣿⠿⠟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀`}
       </pre>
 
+      {starredRepos.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-xs uppercase tracking-wide text-[#dfa8b7] mb-2">⭐ Starred repositories</h2>
+          <ul className="flex flex-col gap-2">
+            {starredRepos.map((repo) => (
+              <li key={repo.id}>
+                <Link
+                  href={`/repo/${repo.id}`}
+                  className="flex items-center justify-between gap-4 border border-[#c98799]/40 bg-[#c98799]/5 rounded-md p-3 hover:border-[#f06fa8] transition-colors no-underline hover:no-underline"
+                >
+                  <div>
+                    <div className="font-bold text-[#f06fa8]">{repo.id}</div>
+                    <p className="text-xs text-[#dfa8b7] mt-0.5">{repo.description}</p>
+                  </div>
+                  <span className="text-sm text-[#fff8fa] whitespace-nowrap">⭐ {repo.stars}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <h1 className="text-xl font-bold text-[#fff8fa] mb-1">Repositories</h1>
       <p className="text-sm text-[#dfa8b7] mb-4">
         Click a repository to see its commit log. Only commit metadata lives here — no source
@@ -66,6 +93,11 @@ export default async function RepoListPage() {
                 <span className="inline-block mt-2 text-xs text-[#dfa8b7] border border-[#6b4552] rounded-full px-2 py-0.5">
                   default branch: {repo.defaultBranch}
                 </span>
+                {(stars.get(repo.id) ?? 0) > 0 && (
+                  <span className="inline-block mt-2 ml-2 text-xs text-[#fff8fa]">
+                    ⭐ {stars.get(repo.id)}
+                  </span>
+                )}
               </div>
               <span className="text-[#dfa8b7] group-hover:text-[#f06fa8] text-sm whitespace-nowrap">
                 View commits →

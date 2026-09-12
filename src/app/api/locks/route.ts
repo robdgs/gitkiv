@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getActiveLock } from "@/lib/arkiv/read";
 import { createBranchLockOnArkiv, ArkivWriteError } from "@/lib/arkiv/write";
-import { LOCK_DURATION_PRESETS, DEFAULT_LOCK_PRESET, type LockDurationPreset } from "@/lib/arkiv/model";
+import { MIN_LOCK_SECONDS, MAX_LOCK_SECONDS } from "@/lib/arkiv/model";
 import type { BranchLock } from "@/lib/types";
 
 export async function GET(req: NextRequest) {
@@ -15,12 +15,9 @@ export async function GET(req: NextRequest) {
   const lock = await getActiveLock(repoId, branch);
   return NextResponse.json({
     lock: lock ? { ...lock, expiresAt: lock.expiresAt.toString() } : null,
-    presets: LOCK_DURATION_PRESETS,
+    minSeconds: MIN_LOCK_SECONDS,
+    maxSeconds: MAX_LOCK_SECONDS,
   });
-}
-
-function isValidPreset(value: unknown): value is LockDurationPreset {
-  return typeof value === "string" && value in LOCK_DURATION_PRESETS;
 }
 
 export async function POST(req: NextRequest) {
@@ -31,7 +28,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const { repoId, branch, author, preset } = (body ?? {}) as Record<string, unknown>;
+  const { repoId, branch, author, durationSeconds } = (body ?? {}) as Record<string, unknown>;
 
   if (typeof repoId !== "string" || !repoId) {
     return NextResponse.json({ error: "repoId is required." }, { status: 400 });
@@ -42,9 +39,15 @@ export async function POST(req: NextRequest) {
   if (typeof author !== "string" || !author.trim()) {
     return NextResponse.json({ error: "author is required." }, { status: 400 });
   }
-  if (preset !== undefined && !isValidPreset(preset)) {
+  if (typeof durationSeconds !== "number" || !Number.isFinite(durationSeconds) || durationSeconds < MIN_LOCK_SECONDS) {
     return NextResponse.json(
-      { error: `preset must be one of: ${Object.keys(LOCK_DURATION_PRESETS).join(", ")}` },
+      { error: `durationSeconds must be a number of at least ${MIN_LOCK_SECONDS}.` },
+      { status: 400 }
+    );
+  }
+  if (durationSeconds > MAX_LOCK_SECONDS) {
+    return NextResponse.json(
+      { error: `durationSeconds must be at most ${MAX_LOCK_SECONDS} (7 days).` },
       { status: 400 }
     );
   }
@@ -57,7 +60,7 @@ export async function POST(req: NextRequest) {
   };
 
   try {
-    const result = await createBranchLockOnArkiv(lock, isValidPreset(preset) ? preset : DEFAULT_LOCK_PRESET);
+    const result = await createBranchLockOnArkiv(lock, durationSeconds);
     return NextResponse.json(
       { lock, entityKey: result.entityKey, txHash: result.txHash, expiresAt: result.expiresAt.toString() },
       { status: 201 }

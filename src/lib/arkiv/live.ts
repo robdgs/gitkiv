@@ -4,9 +4,16 @@
 // rest of the app. No `fromBlock` is ever passed to watchEntityEvents,
 // which is what keeps it on the WebSocket transport instead of silently
 // falling back to HTTP polling (see guides/events-and-expiration).
+//
+// The block-number ticker used to live here too (watchBlockNumber over the
+// same connection), but that `newHeads` subscription never once delivered
+// an update against this endpoint in testing — even alone, in a fresh tab
+// — while this `logs` subscription (watchEntityEvents) works every time.
+// That's an endpoint gap, not something worth retrying around, so the
+// ticker (arkiv-status-card.tsx) polls instead.
 import { createPublicClient, type PublicArkivClient } from "@arkiv-network/sdk";
 import { tiramisu } from "@arkiv-network/sdk/chains";
-import { createPublicClient as createViemClient, http, webSocket } from "viem";
+import { http, webSocket } from "viem";
 
 const WS_URL = "wss://rpc.tiramisu.db-chain.testnet.arkiv.network";
 
@@ -33,6 +40,20 @@ function getHttpClient(): PublicArkivClient {
 }
 
 export const TIRAMISU_CHAIN_ID = tiramisu.id;
+
+// viem's WebSocket transport reports transport-level failures as a raw
+// `Event` (no enumerable own properties, so `console.error(event)` prints
+// `{}`), not always a real `Error`. It also reconnects on its own by
+// default, so a lone report here is normal noise, not a stuck connection —
+// hence `console.warn` rather than `console.error`, which Next's dev
+// overlay treats as a blocking failure.
+function formatWatchError(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object" && "type" in error) {
+    return `transport ${(error as { type: string }).type} (reconnecting…)`;
+  }
+  return String(error);
+}
 
 export type ActivityEvent = {
   id: number;
@@ -100,7 +121,7 @@ export function watchRepoActivity(
 
   const unwatch = getWsClient().watchEntityEvents({
     onEntityCreated: (event) => enqueue(event.entityKey, event.owner),
-    onError: (error) => console.error("[arkiv-live] watcher error", error),
+    onError: (error) => console.warn("[arkiv-live] watcher:", formatWatchError(error)),
     // No fromBlock — see module comment.
   });
 
@@ -109,25 +130,4 @@ export function watchRepoActivity(
     pending.clear();
     unwatch();
   };
-}
-
-// The "Live on Arkiv" block ticker, pushed over a WebSocket instead of
-// polling an API route on an interval. watchBlockNumber is a plain viem
-// action outside the Arkiv SDK's narrowed public-client type (even though
-// Tiramisu supports it), so this uses a plain viem client for just this
-// one subscription rather than casting the Arkiv client's type away.
-let blockWatchClient: ReturnType<typeof createViemClient> | null = null;
-
-function getBlockWatchClient() {
-  if (!blockWatchClient) {
-    blockWatchClient = createViemClient({ chain: tiramisu, transport: webSocket(WS_URL) });
-  }
-  return blockWatchClient;
-}
-
-export function watchLiveBlockNumber(onBlock: (n: bigint) => void, onError?: (error: Error) => void): () => void {
-  return getBlockWatchClient().watchBlockNumber({
-    onBlockNumber: onBlock,
-    onError: (error) => onError?.(error),
-  });
 }

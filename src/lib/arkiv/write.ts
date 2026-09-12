@@ -1,7 +1,7 @@
 // Server-only write path. Imported only from API routes (route.ts always
 // runs server-side in the Next.js app router), so ARKIV_PRIVATE_KEY never
 // reaches the browser bundle.
-import { createWalletClient } from "@arkiv-network/sdk";
+import { createWalletClient, jsonToPayload } from "@arkiv-network/sdk";
 import { tiramisu } from "@arkiv-network/sdk/chains";
 import { http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -14,8 +14,11 @@ import {
   commitsQuery,
   lockEntity,
   lockQuery,
-  DEFAULT_LOCK_PRESET,
-  type LockDurationPreset,
+  MIN_LOCK_SECONDS,
+  branchEntity,
+  branchQuery,
+  starCountEntity,
+  starCountQuery,
 } from "./model";
 
 const TIRAMISU_CHAIN_ID = 7738577;
@@ -72,7 +75,28 @@ export async function createRepoOnArkiv(repo: Repo) {
   }
 
   const walletClient = await requireFundedSigner();
-  return walletClient.createEntity(repoEntity(repo));
+  const result = await walletClient.createEntity(repoEntity(repo));
+  // Every repo needs at least one real branch to be usable — create its
+  // default one now rather than leaving branches to a hardcoded array.
+  await walletClient.createEntity(branchEntity({ repoId: repo.id, name: repo.defaultBranch }));
+  return result;
+}
+
+export async function createBranchOnArkiv(repoId: string, name: string) {
+  const readClient = getArkivClient();
+
+  const existingRepo = await repoQuery(readClient, repoId).fetch();
+  if (existingRepo.entities.length === 0) {
+    throw new ArkivWriteError(`Repository "${repoId}" does not exist.`);
+  }
+
+  const existingBranch = await branchQuery(readClient, repoId, name).fetch();
+  if (existingBranch.entities.length > 0) {
+    throw new ArkivWriteError(`Branch "${name}" already exists.`);
+  }
+
+  const walletClient = await requireFundedSigner();
+  return walletClient.createEntity(branchEntity({ repoId, name }));
 }
 
 export async function createCommitOnArkiv(commit: Commit) {
@@ -95,7 +119,7 @@ export async function createCommitOnArkiv(commit: Commit) {
   return walletClient.createEntity(commitEntity(commit));
 }
 
-export async function createBranchLockOnArkiv(lock: BranchLock, preset: LockDurationPreset = DEFAULT_LOCK_PRESET) {
+export async function createBranchLockOnArkiv(lock: BranchLock, durationSeconds: number = MIN_LOCK_SECONDS) {
   const readClient = getArkivClient();
 
   const existingRepo = await repoQuery(readClient, lock.repoId).fetch();
@@ -109,7 +133,36 @@ export async function createBranchLockOnArkiv(lock: BranchLock, preset: LockDura
   }
 
   const walletClient = await requireFundedSigner();
-  return walletClient.createEntity(lockEntity(lock, preset));
+  return walletClient.createEntity(lockEntity(lock, durationSeconds));
+}
+
+// The app's first patch (mutate-in-place) rather than a fresh create: the
+// star counter's entity key never changes, only its payload does.
+export async function starRepoOnArkiv(repoId: string) {
+  const readClient = getArkivClient();
+
+  const existingRepo = await repoQuery(readClient, repoId).fetch();
+  if (existingRepo.entities.length === 0) {
+    throw new ArkivWriteError(`Repository "${repoId}" does not exist.`);
+  }
+
+  const walletClient = await requireFundedSigner();
+  const existing = await starCountQuery(readClient, repoId).fetch();
+  const entity = existing.entities[0];
+
+  if (!entity) {
+    const result = await walletClient.createEntity(starCountEntity(repoId, 1));
+    return { count: 1, entityKey: result.entityKey, txHash: result.txHash };
+  }
+
+  const current = (entity.toJson() as { count: number }).count ?? 0;
+  const count = current + 1;
+  const result = await walletClient.patchEntity({
+    entityKey: entity.key,
+    payload: jsonToPayload({ count }),
+    contentType: "application/json",
+  });
+  return { count, entityKey: result.entityKey, txHash: result.txHash };
 }
 
 // Latest commit on this branch, used as the new commit's parent — same

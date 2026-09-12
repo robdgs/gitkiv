@@ -2,9 +2,18 @@
 // Same exported shapes (Repo[], Commit[]) so call sites don't change beyond
 // the import. The read path below never touches sqlite, a subgraph, Ponder
 // or a Postgres pipeline — only Arkiv's public RPC.
-import type { Repo, Commit, BranchLock } from "@/lib/types";
+import type { Repo, Commit, BranchLock, Branch } from "@/lib/types";
 import { getArkivClient } from "./client";
-import { reposQuery, repoQuery, commitsQuery, lockQuery } from "./model";
+import {
+  reposQuery,
+  repoQuery,
+  commitsQuery,
+  lockQuery,
+  branchesQuery,
+  starCountQuery,
+  allStarCountsQuery,
+  repoCommitsQuery,
+} from "./model";
 
 export type ActiveLock = BranchLock & { expiresAt: bigint };
 
@@ -52,6 +61,53 @@ export async function getRepoFromArkiv(id: string): Promise<Repo | undefined> {
   const page = await repoQuery(client, id).fetch();
   const entity = page.entities[0];
   return entity ? (entity.toJson() as Repo) : undefined;
+}
+
+// Real entities now, not a hardcoded array — unioned with any branch name
+// that already appears in commit history but predates branches having
+// their own entity (a repo created before this feature shipped). Deriving
+// only when the entity list was empty would make that union disappear the
+// moment any *one* real branch entity exists, hiding every other legacy
+// branch from the switcher even though its commits are still there. A repo
+// with neither branch entities nor commits yet legitimately has an empty
+// list; the call site falls back to the repo's defaultBranch for that case.
+export async function getBranchesFromArkiv(repoId: string): Promise<Branch[]> {
+  const client = getArkivClient();
+  const [branchPage, commitsPage] = await Promise.all([
+    branchesQuery(client, repoId).fetch(),
+    repoCommitsQuery(client, repoId).fetch(),
+  ]);
+  const names = new Set<string>();
+  for (const entity of branchPage.entities) names.add((entity.toJson() as Branch).name);
+  for (const entity of commitsPage.entities) names.add((entity.toJson() as Commit).branch);
+  return [...names].sort().map((name) => ({ repoId, name }));
+}
+
+export async function getStarCount(repoId: string): Promise<number> {
+  const client = getArkivClient();
+  const page = await starCountQuery(client, repoId).fetch();
+  const entity = page.entities[0];
+  if (!entity) return 0;
+  const data = entity.toJson() as { count: number };
+  return data.count ?? 0;
+}
+
+export type RepoStars = { repoId: string; count: number };
+
+// For the homepage's "Starred repositories" section. repoId comes from the
+// attribute (always present) rather than the payload (which is just
+// {count} — the entity doesn't repeat its own repo_id inside itself).
+export async function getAllStarCounts(): Promise<RepoStars[]> {
+  const client = getArkivClient();
+  const page = await allStarCountsQuery(client).fetch();
+  const results: RepoStars[] = [];
+  for (const entity of page.entities) {
+    const repoAttr = entity.attributes.repo_id;
+    if (repoAttr?.type !== "str") continue;
+    const data = entity.toJson() as { count: number };
+    results.push({ repoId: repoAttr.value, count: data.count ?? 0 });
+  }
+  return results;
 }
 
 // This is the exact query Mission 01 targets: a compound filter on
