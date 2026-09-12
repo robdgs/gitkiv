@@ -14,4 +14,18 @@ export type Commit = {
   parentHash: string | null;
   timestamp: number; // unix seconds
   message: string; // payload-only field (never filtered)
+  // Optional file content, stored on Swarm (not Arkiv) — this is just a
+  // pointer. `fileRef` is the Swarm reference (hash) from @snaha/swarm-id.
+  fileRef?: string;
+  fileName?: string;
+};
+
+// ETHRome Mission 02 (Built to expire): a short-lived reservation on a
+// branch. Nothing in this app ever deletes one — it leaves Arkiv's query
+// surface entirely on its own once its block arrives.
+export type BranchLock = {
+  repoId: string;
+  branch: string;
+  author: string;
+  lockedAt: number; // unix seconds, display only
 };

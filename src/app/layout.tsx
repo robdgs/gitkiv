@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import ArkivStatusCard from "./arkiv-status-card";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -10,11 +12,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="bg-[#0d1117] text-[#c9d1d9] font-mono min-h-screen">
-        <header className="border-b border-[#30363d] px-4 py-3 flex items-center gap-2">
-          <span className="text-[#58a6ff] font-bold">gitkiv</span>
-          <span className="text-[#8b949e] text-sm">/ repos, but the commit log comes from Arkiv</span>
+        <header className="border-b border-[#30363d] px-4 py-3">
+          <Link href="/" className="flex items-baseline gap-2 w-fit">
+            <span className="text-[#58a6ff] font-bold text-base">gitkiv</span>
+            <span className="text-[#8b949e] text-sm hidden sm:inline">
+              commit history read straight from Arkiv
+            </span>
+          </Link>
         </header>
-        <main className="max-w-3xl mx-auto px-4 py-6">{children}</main>
+        <main className="max-w-3xl mx-auto px-4 py-6">
+          <ArkivStatusCard />
+          {children}
+        </main>
       </body>
     </html>
   );

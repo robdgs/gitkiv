@@ -1,5 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 const BRANCHES = ["main", "feature/arkiv"];
 
@@ -13,38 +14,71 @@ export default function BranchSwitcher({
   currentAuthor?: string;
 }) {
   const router = useRouter();
+  const [author, setAuthor] = useState(currentAuthor ?? "");
 
-  function go(branch: string, author?: string) {
+  function go(branch: string, authorValue?: string) {
     const params = new URLSearchParams({ branch });
-    if (author) params.set("author", author);
+    if (authorValue) params.set("author", authorValue);
     router.push(`/repo/${repoId}?${params.toString()}`);
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2 text-sm">
-      <span className="text-[#8b949e]">branch:</span>
-      {BRANCHES.map((b) => (
-        <button
-          key={b}
-          onClick={() => go(b, currentAuthor)}
-          className={`px-2 py-1 rounded border ${
-            b === currentBranch
-              ? "border-[#58a6ff] text-[#58a6ff]"
-              : "border-[#30363d] text-[#c9d1d9] hover:border-[#8b949e]"
-          }`}
-        >
-          {b}
-        </button>
-      ))}
-      <span className="text-[#8b949e] ml-4">author:</span>
-      <input
-        defaultValue={currentAuthor ?? ""}
-        placeholder="all"
-        onKeyDown={(e) => {
-          if (e.key === "Enter") go(currentBranch, (e.target as HTMLInputElement).value || undefined);
+    <div className="border border-[#30363d] rounded-md p-4 flex flex-col gap-4">
+      <div>
+        <div className="text-xs uppercase tracking-wide text-[#8b949e] mb-2">Branch</div>
+        <div className="flex flex-wrap gap-2">
+          {BRANCHES.map((b) => (
+            <button
+              key={b}
+              onClick={() => go(b, author || undefined)}
+              className={`px-3 py-1.5 rounded-md border text-sm cursor-pointer transition-colors ${
+                b === currentBranch
+                  ? "border-[#58a6ff] bg-[#1f2937] text-[#58a6ff]"
+                  : "border-[#30363d] text-[#c9d1d9] hover:border-[#8b949e]"
+              }`}
+            >
+              {b}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          go(currentBranch, author || undefined);
         }}
-        className="bg-[#161b22] border border-[#30363d] rounded px-2 py-1 w-28 text-[#c9d1d9]"
-      />
+      >
+        <div className="text-xs uppercase tracking-wide text-[#8b949e] mb-2">
+          Filter by author (optional)
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            value={author}
+            onChange={(e) => setAuthor(e.target.value)}
+            placeholder="e.g. alice"
+            className="bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-1.5 w-40 text-sm text-[#c9d1d9] focus:outline-none focus:border-[#58a6ff]"
+          />
+          <button
+            type="submit"
+            className="px-3 py-1.5 rounded-md border border-[#30363d] text-sm bg-[#21262d] hover:border-[#58a6ff] cursor-pointer"
+          >
+            Filter
+          </button>
+          {currentAuthor && (
+            <button
+              type="button"
+              onClick={() => {
+                setAuthor("");
+                go(currentBranch, undefined);
+              }}
+              className="px-3 py-1.5 rounded-md text-sm text-[#8b949e] hover:text-[#c9d1d9] cursor-pointer"
+            >
+              × clear
+            </button>
+          )}
+        </div>
+      </form>
     </div>
   );
 }
