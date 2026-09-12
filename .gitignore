@@ -1,0 +1,23 @@
+# dependencies
+/node_modules
+
+# next.js build output
+/.next
+/out
+
+# env / secrets — never commit a private key
+.env
+.env*.local
+
+# local sqlite baseline data (not the schema code — the generated db file)
+*.sqlite
+*.sqlite-journal
+
+# misc
+.DS_Store
+*.pem
+npm-debug.log*
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts

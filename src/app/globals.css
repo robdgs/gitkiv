@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+body {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+a {
+  color: #58a6ff;
+}
+a:hover {
+  text-decoration: underline;
+}
