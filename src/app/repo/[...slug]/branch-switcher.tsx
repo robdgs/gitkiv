@@ -23,9 +23,9 @@ export default function BranchSwitcher({
   }
 
   return (
-    <div className="border border-[#30363d] rounded-md p-4 flex flex-col gap-4">
+    <div className="border border-[#6b4552] rounded-md p-4 flex flex-col gap-4">
       <div>
-        <div className="text-xs uppercase tracking-wide text-[#8b949e] mb-2">Branch</div>
+        <div className="text-xs uppercase tracking-wide text-[#dfa8b7] mb-2">Branch</div>
         <div className="flex flex-wrap gap-2">
           {BRANCHES.map((b) => (
             <button
@@ -33,8 +33,8 @@ export default function BranchSwitcher({
               onClick={() => go(b, author || undefined)}
               className={`px-3 py-1.5 rounded-md border text-sm cursor-pointer transition-colors ${
                 b === currentBranch
-                  ? "border-[#58a6ff] bg-[#1f2937] text-[#58a6ff]"
-                  : "border-[#30363d] text-[#c9d1d9] hover:border-[#8b949e]"
+                  ? "border-[#f06fa8] bg-[#f06fa8]/15 text-[#f06fa8]"
+                  : "border-[#6b4552] text-[#fff8fa] hover:border-[#f06fa8]"
               }`}
             >
               {b}
@@ -49,7 +49,7 @@ export default function BranchSwitcher({
           go(currentBranch, author || undefined);
         }}
       >
-        <div className="text-xs uppercase tracking-wide text-[#8b949e] mb-2">
+        <div className="text-xs uppercase tracking-wide text-[#dfa8b7] mb-2">
           Filter by author (optional)
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -57,11 +57,11 @@ export default function BranchSwitcher({
             value={author}
             onChange={(e) => setAuthor(e.target.value)}
             placeholder="e.g. alice"
-            className="bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-1.5 w-40 text-sm text-[#c9d1d9] focus:outline-none focus:border-[#58a6ff]"
+            className="bg-[#3d2632] border border-[#6b4552] rounded-md px-3 py-1.5 w-40 text-sm text-[#fff8fa] focus:outline-none focus:border-[#f06fa8]"
           />
           <button
             type="submit"
-            className="px-3 py-1.5 rounded-md border border-[#30363d] text-sm bg-[#21262d] hover:border-[#58a6ff] cursor-pointer"
+            className="px-3 py-1.5 rounded-md border border-[#6b4552] text-sm bg-[#3d2632] text-[#fff8fa] hover:border-[#f06fa8] cursor-pointer"
           >
             Filter
           </button>
@@ -72,7 +72,7 @@ export default function BranchSwitcher({
                 setAuthor("");
                 go(currentBranch, undefined);
               }}
-              className="px-3 py-1.5 rounded-md text-sm text-[#8b949e] hover:text-[#c9d1d9] cursor-pointer"
+              className="px-3 py-1.5 rounded-md text-sm text-[#dfa8b7] hover:text-[#fff8fa] cursor-pointer"
             >
               × clear
             </button>

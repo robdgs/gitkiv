@@ -3,7 +3,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
 const inputClass =
-  "w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-1.5 text-sm text-[#c9d1d9] focus:outline-none focus:border-[#58a6ff]";
+  "w-full bg-[#3d2632] border border-[#6b4552] rounded-md px-3 py-1.5 text-sm text-[#fff8fa] focus:outline-none focus:border-[#f06fa8]";
 
 type Receipt = { repoId: string; entityKey: string; txHash: string };
 
@@ -42,17 +42,17 @@ export default function NewRepoForm() {
   // Tiramisu, one click away from the public explorer.
   if (receipt) {
     return (
-      <div className="mb-6 border border-[#238636]/40 bg-[#238636]/5 rounded-md p-4 flex flex-col gap-2">
-        <div className="text-sm font-bold text-[#7ee787]">✓ Created on Arkiv (Tiramisu testnet)</div>
-        <div className="text-xs text-[#8b949e] break-all">
-          entity key: <span className="text-[#c9d1d9]">{receipt.entityKey}</span>
+      <div className="mb-6 border border-[#f06fa8]/40 bg-[#f06fa8]/10 rounded-md p-4 flex flex-col gap-2">
+        <div className="text-sm font-bold text-[#f06fa8]">✓ Created on Arkiv (Tiramisu testnet)</div>
+        <div className="text-xs text-[#dfa8b7] break-all">
+          entity key: <span className="text-[#fff8fa]">{receipt.entityKey}</span>
         </div>
-        <div className="text-xs text-[#8b949e] break-all">
-          tx hash: <span className="text-[#c9d1d9]">{receipt.txHash}</span>
+        <div className="text-xs text-[#dfa8b7] break-all">
+          tx hash: <span className="text-[#fff8fa]">{receipt.txHash}</span>
         </div>
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs mt-1">
           <a
-            className="text-[#58a6ff]"
+            className="text-[#f06fa8]"
             target="_blank"
             rel="noreferrer"
             href={`https://tiramisu.explorer.arkiv.network/tx/${receipt.txHash}`}
@@ -60,7 +60,7 @@ export default function NewRepoForm() {
             View transaction on explorer ↗
           </a>
           <a
-            className="text-[#58a6ff]"
+            className="text-[#f06fa8]"
             target="_blank"
             rel="noreferrer"
             href={`https://tiramisu.explorer.arkiv.network/entity/${receipt.entityKey}`}
@@ -70,7 +70,7 @@ export default function NewRepoForm() {
         </div>
         <button
           onClick={() => router.push(`/repo/${receipt.repoId}`)}
-          className="mt-2 w-fit px-3 py-1.5 rounded-md border border-[#238636] bg-[#238636]/20 text-[#7ee787] text-sm hover:bg-[#238636]/30 cursor-pointer"
+          className="mt-2 w-fit px-3 py-1.5 rounded-md border border-[#f06fa8] bg-[#f06fa8]/20 text-[#f06fa8] text-sm hover:bg-[#f06fa8]/30 cursor-pointer"
         >
           Open repository →
         </button>
@@ -82,7 +82,7 @@ export default function NewRepoForm() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="mb-6 px-3 py-1.5 rounded-md border border-[#238636] text-[#7ee787] text-sm hover:bg-[#238636]/10 cursor-pointer"
+        className="mb-6 px-3 py-1.5 rounded-md border border-[#f06fa8] text-[#f06fa8] text-sm hover:bg-[#f06fa8]/10 cursor-pointer"
       >
         + New repository
       </button>
@@ -90,15 +90,15 @@ export default function NewRepoForm() {
   }
 
   return (
-    <form onSubmit={submit} className="mb-6 border border-[#30363d] rounded-md p-4 flex flex-col gap-3">
-      <div className="text-sm font-bold text-[#e6edf3]">New repository</div>
-      <p className="text-xs text-[#8b949e] -mt-1">
+    <form onSubmit={submit} className="mb-6 border border-[#6b4552] rounded-md p-4 flex flex-col gap-3">
+      <div className="text-sm font-bold text-[#fff8fa]">New repository</div>
+      <p className="text-xs text-[#dfa8b7] -mt-1">
         This creates a real entity on Arkiv (Tiramisu testnet) — no other database involved.
       </p>
 
       <div className="flex gap-2">
         <div className="flex-1">
-          <label className="text-xs text-[#8b949e] block mb-1">Owner</label>
+          <label className="text-xs text-[#dfa8b7] block mb-1">Owner</label>
           <input
             value={owner}
             onChange={(e) => setOwner(e.target.value)}
@@ -108,7 +108,7 @@ export default function NewRepoForm() {
           />
         </div>
         <div className="flex-1">
-          <label className="text-xs text-[#8b949e] block mb-1">Name</label>
+          <label className="text-xs text-[#dfa8b7] block mb-1">Name</label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -120,7 +120,7 @@ export default function NewRepoForm() {
       </div>
 
       <div>
-        <label className="text-xs text-[#8b949e] block mb-1">Description (optional)</label>
+        <label className="text-xs text-[#dfa8b7] block mb-1">Description (optional)</label>
         <input
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -130,7 +130,7 @@ export default function NewRepoForm() {
       </div>
 
       <div>
-        <label className="text-xs text-[#8b949e] block mb-1">Default branch</label>
+        <label className="text-xs text-[#dfa8b7] block mb-1">Default branch</label>
         <input
           value={defaultBranch}
           onChange={(e) => setDefaultBranch(e.target.value)}
@@ -138,13 +138,13 @@ export default function NewRepoForm() {
         />
       </div>
 
-      {error && <p className="text-sm text-[#f85149]">{error}</p>}
+      {error && <p className="text-sm font-semibold text-[#f06fa8]">{error}</p>}
 
       <div className="flex gap-2 mt-1">
         <button
           type="submit"
           disabled={loading}
-          className="px-3 py-1.5 rounded-md border border-[#238636] bg-[#238636]/20 text-[#7ee787] text-sm hover:bg-[#238636]/30 cursor-pointer disabled:opacity-50"
+          className="px-3 py-1.5 rounded-md border border-[#f06fa8] bg-[#f06fa8]/20 text-[#f06fa8] text-sm hover:bg-[#f06fa8]/30 cursor-pointer disabled:opacity-50"
         >
           {loading ? "Creating on Arkiv…" : "Create repository"}
         </button>
@@ -152,7 +152,7 @@ export default function NewRepoForm() {
           type="button"
           onClick={() => setOpen(false)}
           disabled={loading}
-          className="px-3 py-1.5 rounded-md text-sm text-[#8b949e] hover:text-[#c9d1d9] cursor-pointer"
+          className="px-3 py-1.5 rounded-md text-sm text-[#dfa8b7] hover:text-[#fff8fa] cursor-pointer"
         >
           Cancel
         </button>

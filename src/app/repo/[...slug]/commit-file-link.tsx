@@ -60,12 +60,12 @@ export default function CommitFileLink({ fileRef, fileName, encrypted, historyRe
       <button
         onClick={open}
         disabled={loading}
-        className="text-[#58a6ff] text-xs hover:underline cursor-pointer disabled:opacity-50"
+        className="text-[#f06fa8] text-xs hover:underline cursor-pointer disabled:opacity-50"
       >
         {encrypted ? "🔒" : "📄"} {fileName}
         {loading ? (encrypted ? " · decrypting…" : " · downloading from Swarm…") : ""}
       </button>
-      {error && <span className="text-[#f85149] text-xs">{error}</span>}
+      {error && <span className="text-[#f06fa8] font-semibold text-xs">{error}</span>}
     </span>
   );
 }

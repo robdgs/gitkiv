@@ -19,9 +19,20 @@ import type { Repo, Commit, BranchLock } from "@/lib/types";
 // expiration (that's Mission 02) — these entities should outlive the demo.
 const ENTITY_LIFETIME = ExpirationTime.fromDays(30);
 
-// Mission 02 (Built to expire): short enough to watch expire live in a
-// demo (~2s/block on Tiramisu), overridable for a faster or slower demo.
-export const LOCK_LIFETIME_BLOCKS = Number(process.env.ARKIV_LOCK_BLOCKS ?? 20);
+// Mission 02 (Built to expire): user-selectable lock lifetimes, short
+// enough to watch expire live in a demo. Blocks are ~2s on Tiramisu, so
+// these are approximate — the receipt's applied expiry block is the exact
+// truth, not this label. Fixed presets (rather than an arbitrary client-
+// supplied block count) keep the server in control of how long anything
+// actually locks for.
+export const LOCK_DURATION_PRESETS = {
+  "10s": 5,
+  "40s": 20,
+  "1m": 30,
+} as const;
+
+export type LockDurationPreset = keyof typeof LOCK_DURATION_PRESETS;
+export const DEFAULT_LOCK_PRESET: LockDurationPreset = "40s";
 
 // ---- repo entity -------------------------------------------------
 
@@ -89,7 +100,7 @@ export function commitsQuery(client: PublicArkivClient, repoId: string, branch: 
 // from every query on its own and the UI unblocks — that state change is
 // the entire feature.
 
-export function lockEntity(lock: BranchLock) {
+export function lockEntity(lock: BranchLock, preset: LockDurationPreset = DEFAULT_LOCK_PRESET) {
   return {
     attributes: {
       kind: str("lock"),
@@ -98,7 +109,7 @@ export function lockEntity(lock: BranchLock) {
     },
     payload: jsonToPayload(lock),
     contentType: "application/json",
-    expires: ExpirationTime.fromBlocks(LOCK_LIFETIME_BLOCKS),
+    expires: ExpirationTime.fromBlocks(LOCK_DURATION_PRESETS[preset]),
   };
 }
 

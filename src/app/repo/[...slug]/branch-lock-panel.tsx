@@ -4,9 +4,16 @@ import NewCommitForm from "./new-commit-form";
 
 type Lock = { repoId: string; branch: string; author: string; lockedAt: number; expiresAt: string };
 type Receipt = { entityKey: string; txHash: string };
+type DurationPreset = "10s" | "40s" | "1m";
+
+const DURATION_OPTIONS: { value: DurationPreset; label: string }[] = [
+  { value: "10s", label: "10s" },
+  { value: "40s", label: "40s" },
+  { value: "1m", label: "1 min" },
+];
 
 const inputClass =
-  "bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-1.5 text-sm text-[#c9d1d9] focus:outline-none focus:border-[#58a6ff]";
+  "bg-[#3d2632] border border-[#6b4552] rounded-md px-3 py-1.5 text-sm text-[#fff8fa] focus:outline-none focus:border-[#f06fa8]";
 
 // Mission 02 (Built to expire): while a lock entity is queryable, commits
 // are blocked. Nothing here ever deletes it — this panel just polls the
@@ -18,6 +25,7 @@ export default function BranchLockPanel({ repoId, branch }: { repoId: string; br
   const [checked, setChecked] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [author, setAuthor] = useState("");
+  const [duration, setDuration] = useState<DurationPreset>("40s");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<Receipt | null>(null);
@@ -64,7 +72,7 @@ export default function BranchLockPanel({ repoId, branch }: { repoId: string; br
       const res = await fetch("/api/locks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ repoId, branch, author }),
+        body: JSON.stringify({ repoId, branch, author, preset: duration }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to lock branch.");
@@ -84,15 +92,15 @@ export default function BranchLockPanel({ repoId, branch }: { repoId: string; br
   if (lock) {
     const blocksLeft = currentBlock !== null ? Number(BigInt(lock.expiresAt) - currentBlock) : null;
     return (
-      <div className="mt-4 border border-[#d29922]/40 bg-[#d29922]/5 rounded-md p-4">
-        <div className="text-sm font-bold text-[#d29922]">
+      <div className="mt-4 border border-[#c98799]/40 bg-[#c98799]/10 rounded-md p-4">
+        <div className="text-sm font-bold text-[#c98799]">
           🔒 {branch} is locked by {lock.author}
         </div>
-        <p className="text-xs text-[#8b949e] mt-1">
+        <p className="text-xs text-[#dfa8b7] mt-1">
           New commits are disabled while this reservation is active. It will lift itself — this app
           never calls a delete or a cleanup job.
         </p>
-        <p className="text-xs text-[#8b949e] mt-1">
+        <p className="text-xs text-[#dfa8b7] mt-1">
           {blocksLeft !== null && blocksLeft > 0
             ? `expires in ~${blocksLeft} block${blocksLeft === 1 ? "" : "s"} (~${blocksLeft * 2}s) · at block #${lock.expiresAt}`
             : "expiring any moment…"}
@@ -104,19 +112,19 @@ export default function BranchLockPanel({ repoId, branch }: { repoId: string; br
   return (
     <div className="mt-4">
       {wasLocked && (
-        <p className="text-xs text-[#7ee787] mb-2">
+        <p className="text-xs text-[#f06fa8] mb-2">
           ✓ Lock expired on its own — Arkiv stopped returning it. Commits are unblocked again.
         </p>
       )}
 
       {receipt && (
-        <div className="mb-3 border border-[#238636]/40 bg-[#238636]/5 rounded-md p-3 text-xs flex flex-col gap-1">
-          <div className="font-bold text-[#7ee787]">✓ Locked on Arkiv (Tiramisu testnet)</div>
-          <div className="text-[#8b949e] break-all">
-            tx hash: <span className="text-[#c9d1d9]">{receipt.txHash}</span>
+        <div className="mb-3 border border-[#f06fa8]/40 bg-[#f06fa8]/10 rounded-md p-3 text-xs flex flex-col gap-1">
+          <div className="font-bold text-[#f06fa8]">✓ Locked on Arkiv (Tiramisu testnet)</div>
+          <div className="text-[#dfa8b7] break-all">
+            tx hash: <span className="text-[#fff8fa]">{receipt.txHash}</span>
           </div>
           <a
-            className="text-[#58a6ff] w-fit"
+            className="text-[#f06fa8] w-fit"
             target="_blank"
             rel="noreferrer"
             href={`https://tiramisu.explorer.arkiv.network/tx/${receipt.txHash}`}
@@ -129,14 +137,14 @@ export default function BranchLockPanel({ repoId, branch }: { repoId: string; br
       {!showForm ? (
         <button
           onClick={() => setShowForm(true)}
-          className="px-3 py-1.5 rounded-md border border-[#d29922] text-[#d29922] text-sm hover:bg-[#d29922]/10 cursor-pointer"
+          className="px-3 py-1.5 rounded-md border border-[#c98799] text-[#c98799] text-sm hover:bg-[#c98799]/10 cursor-pointer"
         >
           🔒 Lock {branch} (short-lived reservation)
         </button>
       ) : (
-        <form onSubmit={acquireLock} className="border border-[#30363d] rounded-md p-4 flex flex-col gap-3">
-          <div className="text-sm font-bold text-[#e6edf3]">Lock {branch}</div>
-          <p className="text-xs text-[#8b949e] -mt-1">
+        <form onSubmit={acquireLock} className="border border-[#6b4552] rounded-md p-4 flex flex-col gap-3">
+          <div className="text-sm font-bold text-[#fff8fa]">Lock {branch}</div>
+          <p className="text-xs text-[#dfa8b7] -mt-1">
             Creates a real Arkiv entity with a short block-based expiry. Blocks commits until it
             expires on its own.
           </p>
@@ -147,20 +155,41 @@ export default function BranchLockPanel({ repoId, branch }: { repoId: string; br
             className={inputClass}
             required
           />
-          {error && <p className="text-sm text-[#f85149]">{error}</p>}
+          <div>
+            <label className="text-xs text-[#dfa8b7] block mb-1">Lock for</label>
+            <div className="flex gap-2">
+              {DURATION_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setDuration(opt.value)}
+                  className={`px-3 py-1.5 rounded-md border text-sm cursor-pointer transition-colors ${
+                    duration === opt.value
+                      ? "border-[#c98799] bg-[#c98799]/15 text-[#c98799]"
+                      : "border-[#6b4552] text-[#fff8fa] hover:border-[#c98799]"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {error && <p className="text-sm font-semibold text-[#f06fa8]">{error}</p>}
           <div className="flex gap-2">
             <button
               type="submit"
               disabled={loading}
-              className="px-3 py-1.5 rounded-md border border-[#d29922] bg-[#d29922]/20 text-[#d29922] text-sm hover:bg-[#d29922]/30 cursor-pointer disabled:opacity-50"
+              className="px-3 py-1.5 rounded-md border border-[#c98799] bg-[#c98799]/20 text-[#c98799] text-sm hover:bg-[#c98799]/30 cursor-pointer disabled:opacity-50"
             >
-              {loading ? "Locking on Arkiv…" : "Lock branch"}
+              {loading
+                ? "Locking on Arkiv…"
+                : `Lock branch for ${DURATION_OPTIONS.find((o) => o.value === duration)?.label}`}
             </button>
             <button
               type="button"
               onClick={() => setShowForm(false)}
               disabled={loading}
-              className="px-3 py-1.5 rounded-md text-sm text-[#8b949e] hover:text-[#c9d1d9] cursor-pointer"
+              className="px-3 py-1.5 rounded-md text-sm text-[#dfa8b7] hover:text-[#fff8fa] cursor-pointer"
             >
               Cancel
             </button>

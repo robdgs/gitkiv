@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useSwarmId } from "@/lib/swarm-id";
 
 const inputClass =
-  "bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-1.5 text-sm text-[#c9d1d9] focus:outline-none focus:border-[#58a6ff]";
+  "bg-[#3d2632] border border-[#6b4552] rounded-md px-3 py-1.5 text-sm text-[#fff8fa] focus:outline-none focus:border-[#f06fa8]";
 
 type Receipt = { entityKey: string; txHash: string; fileRef?: string; encrypted?: boolean };
 type AttachedFile = {
@@ -124,7 +124,7 @@ export default function NewCommitForm({ repoId, branch }: { repoId: string; bran
     return (
       <button
         onClick={() => setOpen(true)}
-        className="mt-4 px-3 py-1.5 rounded-md border border-[#238636] text-[#7ee787] text-sm hover:bg-[#238636]/10 cursor-pointer"
+        className="mt-4 px-3 py-1.5 rounded-md border border-[#f06fa8] text-[#f06fa8] text-sm hover:bg-[#f06fa8]/10 cursor-pointer"
       >
         + New commit on {branch}
       </button>
@@ -132,17 +132,17 @@ export default function NewCommitForm({ repoId, branch }: { repoId: string; bran
   }
 
   return (
-    <form onSubmit={submit} className="mt-4 border border-[#30363d] rounded-md p-4 flex flex-col gap-3">
-      <div className="text-sm font-bold text-[#e6edf3]">
-        New commit on <span className="text-[#58a6ff]">{branch}</span>
+    <form onSubmit={submit} className="mt-4 border border-[#6b4552] rounded-md p-4 flex flex-col gap-3">
+      <div className="text-sm font-bold text-[#fff8fa]">
+        New commit on <span className="text-[#f06fa8]">{branch}</span>
       </div>
-      <p className="text-xs text-[#8b949e] -mt-1">
+      <p className="text-xs text-[#dfa8b7] -mt-1">
         Writes a real commit entity to Arkiv. Hash and parent link are generated automatically.
       </p>
 
       <div className="flex gap-2">
         <div className="w-40">
-          <label className="text-xs text-[#8b949e] block mb-1">Author</label>
+          <label className="text-xs text-[#dfa8b7] block mb-1">Author</label>
           <input
             value={author}
             onChange={(e) => setAuthor(e.target.value)}
@@ -152,7 +152,7 @@ export default function NewCommitForm({ repoId, branch }: { repoId: string; bran
           />
         </div>
         <div className="flex-1">
-          <label className="text-xs text-[#8b949e] block mb-1">Commit message</label>
+          <label className="text-xs text-[#dfa8b7] block mb-1">Commit message</label>
           <input
             value={message}
             onChange={(e) => setMessage(e.target.value)}
@@ -164,37 +164,37 @@ export default function NewCommitForm({ repoId, branch }: { repoId: string; bran
       </div>
 
       <div>
-        <label className="text-xs text-[#8b949e] block mb-1">Attach a file (optional, stored on Swarm)</label>
+        <label className="text-xs text-[#dfa8b7] block mb-1">Attach a file (optional, stored on Swarm)</label>
         {!info?.identity ? (
           <button
             type="button"
             onClick={() => connect()}
-            className="px-3 py-1.5 rounded-md border border-[#30363d] text-[#c9d1d9] text-sm hover:border-[#58a6ff] cursor-pointer"
+            className="px-3 py-1.5 rounded-md border border-[#6b4552] text-[#fff8fa] text-sm hover:border-[#f06fa8] cursor-pointer"
           >
             Connect Swarm ID to attach a file
           </button>
         ) : !info.canUpload ? (
-          <p className="text-xs text-[#f0883e]">
+          <p className="text-xs text-[#c98799]">
             Swarm ID connected as {info.identity.name}, but this account can&apos;t upload yet
             {info.uploadUnavailableReason === "no-stamp" ? " (no storage stamp)." : "."}
           </p>
         ) : file ? (
           <div className="flex items-center gap-3 text-xs">
-            <span className="text-[#7ee787]">
+            <span className="text-[#f06fa8]">
               {file.encrypted ? "🔒" : "📄"} {file.name} — uploaded to Swarm
               {file.encrypted ? " (encrypted)" : ""}
             </span>
             <button
               type="button"
               onClick={() => setFile(null)}
-              className="text-[#8b949e] hover:text-[#c9d1d9] cursor-pointer"
+              className="text-[#dfa8b7] hover:text-[#fff8fa] cursor-pointer"
             >
               remove
             </button>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            <label className="flex items-center gap-2 text-xs text-[#8b949e]">
+            <label className="flex items-center gap-2 text-xs text-[#dfa8b7]">
               <input
                 type="checkbox"
                 checked={encrypt}
@@ -205,14 +205,14 @@ export default function NewCommitForm({ repoId, branch }: { repoId: string; bran
             </label>
 
             {encrypt && (
-              <div className="border border-[#30363d] rounded-md p-3 flex flex-col gap-2">
+              <div className="border border-[#6b4552] rounded-md p-3 flex flex-col gap-2">
                 {info.appKey?.publicKey && (
-                  <p className="text-xs text-[#8b949e] break-all">
+                  <p className="text-xs text-[#dfa8b7] break-all">
                     Your public key (share so others can grant you access):{" "}
-                    <span className="text-[#c9d1d9]">{info.appKey.publicKey}</span>
+                    <span className="text-[#fff8fa]">{info.appKey.publicKey}</span>
                   </p>
                 )}
-                <label className="text-xs text-[#8b949e] block">
+                <label className="text-xs text-[#dfa8b7] block">
                   Grantee public keys (comma/space/newline separated — leave empty for only you)
                 </label>
                 <textarea
@@ -229,38 +229,38 @@ export default function NewCommitForm({ repoId, branch }: { repoId: string; bran
               type="file"
               onChange={handleFilePick}
               disabled={fileUploading}
-              className="text-xs text-[#8b949e] file:mr-3 file:px-3 file:py-1.5 file:rounded-md file:border file:border-[#30363d] file:bg-[#21262d] file:text-[#c9d1d9] file:text-xs file:cursor-pointer"
+              className="text-xs text-[#dfa8b7] file:mr-3 file:px-3 file:py-1.5 file:rounded-md file:border file:border-[#6b4552] file:bg-[#3d2632] file:text-[#fff8fa] file:text-xs file:cursor-pointer"
             />
           </div>
         )}
         {fileUploading && (
-          <p className="text-xs text-[#8b949e] mt-1">
+          <p className="text-xs text-[#dfa8b7] mt-1">
             {encrypt ? "Encrypting and uploading to Swarm…" : "Uploading to Swarm…"}
           </p>
         )}
-        {fileError && <p className="text-xs text-[#f85149] mt-1">{fileError}</p>}
+        {fileError && <p className="text-xs font-semibold text-[#f06fa8] mt-1">{fileError}</p>}
       </div>
 
-      {error && <p className="text-sm text-[#f85149]">{error}</p>}
+      {error && <p className="text-sm font-semibold text-[#f06fa8]">{error}</p>}
 
       {receipt && (
-        <div className="border border-[#238636]/40 bg-[#238636]/5 rounded-md p-3 text-xs flex flex-col gap-1.5">
-          <div className="font-bold text-[#7ee787]">✓ Committed on Arkiv (Tiramisu testnet)</div>
-          <div className="text-[#8b949e] break-all">
-            entity key: <span className="text-[#c9d1d9]">{receipt.entityKey}</span>
+        <div className="border border-[#f06fa8]/40 bg-[#f06fa8]/10 rounded-md p-3 text-xs flex flex-col gap-1.5">
+          <div className="font-bold text-[#f06fa8]">✓ Committed on Arkiv (Tiramisu testnet)</div>
+          <div className="text-[#dfa8b7] break-all">
+            entity key: <span className="text-[#fff8fa]">{receipt.entityKey}</span>
           </div>
-          <div className="text-[#8b949e] break-all">
-            tx hash: <span className="text-[#c9d1d9]">{receipt.txHash}</span>
+          <div className="text-[#dfa8b7] break-all">
+            tx hash: <span className="text-[#fff8fa]">{receipt.txHash}</span>
           </div>
           {receipt.fileRef && (
-            <div className="text-[#8b949e] break-all">
+            <div className="text-[#dfa8b7] break-all">
               swarm reference{receipt.encrypted ? " (encrypted)" : ""}:{" "}
-              <span className="text-[#c9d1d9]">{receipt.fileRef}</span>
+              <span className="text-[#fff8fa]">{receipt.fileRef}</span>
             </div>
           )}
           <div className="flex gap-4 mt-0.5">
             <a
-              className="text-[#58a6ff]"
+              className="text-[#f06fa8]"
               target="_blank"
               rel="noreferrer"
               href={`https://tiramisu.explorer.arkiv.network/tx/${receipt.txHash}`}
@@ -268,7 +268,7 @@ export default function NewCommitForm({ repoId, branch }: { repoId: string; bran
               View transaction ↗
             </a>
             <a
-              className="text-[#58a6ff]"
+              className="text-[#f06fa8]"
               target="_blank"
               rel="noreferrer"
               href={`https://tiramisu.explorer.arkiv.network/entity/${receipt.entityKey}`}
@@ -283,7 +283,7 @@ export default function NewCommitForm({ repoId, branch }: { repoId: string; bran
         <button
           type="submit"
           disabled={loading}
-          className="px-3 py-1.5 rounded-md border border-[#238636] bg-[#238636]/20 text-[#7ee787] text-sm hover:bg-[#238636]/30 cursor-pointer disabled:opacity-50"
+          className="px-3 py-1.5 rounded-md border border-[#f06fa8] bg-[#f06fa8]/20 text-[#f06fa8] text-sm hover:bg-[#f06fa8]/30 cursor-pointer disabled:opacity-50"
         >
           {loading ? "Committing to Arkiv…" : "Commit"}
         </button>
@@ -291,7 +291,7 @@ export default function NewCommitForm({ repoId, branch }: { repoId: string; bran
           type="button"
           onClick={() => setOpen(false)}
           disabled={loading}
-          className="px-3 py-1.5 rounded-md text-sm text-[#8b949e] hover:text-[#c9d1d9] cursor-pointer"
+          className="px-3 py-1.5 rounded-md text-sm text-[#dfa8b7] hover:text-[#fff8fa] cursor-pointer"
         >
           Cancel
         </button>

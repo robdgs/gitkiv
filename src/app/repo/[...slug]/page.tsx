@@ -5,6 +5,7 @@ import BranchSwitcher from "./branch-switcher";
 import BranchLockPanel from "./branch-lock-panel";
 import CommitFileLink from "./commit-file-link";
 import SwarmActivityLog from "./swarm-activity-log";
+import LiveFeed from "./live-feed";
 
 export const dynamic = "force-dynamic";
 
@@ -28,36 +29,38 @@ export default async function RepoDetailPage({
 
   return (
     <div>
-      <Link href="/" className="text-sm text-[#8b949e] hover:text-[#58a6ff]">
+      <Link href="/" className="text-sm text-[#dfa8b7] hover:text-[#f06fa8]">
         ← All repositories
       </Link>
 
-      <h1 className="text-xl font-bold text-[#e6edf3] mt-2 mb-1">{repo.id}</h1>
-      <p className="text-sm text-[#8b949e] mb-4">{repo.description}</p>
+      <h1 className="text-xl font-bold text-[#fff8fa] mt-2 mb-1">{repo.id}</h1>
+      <p className="text-sm text-[#dfa8b7] mb-4">{repo.description}</p>
 
       <BranchSwitcher repoId={repoId} currentBranch={branch} currentAuthor={author} />
 
       <BranchLockPanel repoId={repoId} branch={branch} />
 
-      <div className="text-xs uppercase tracking-wide text-[#8b949e] mt-6 mb-2">
+      <LiveFeed repoId={repoId} branch={branch} />
+
+      <div className="text-xs uppercase tracking-wide text-[#dfa8b7] mt-6 mb-2">
         Commits on {branch}
         {author ? ` by ${author}` : ""} ({commits.length})
       </div>
 
-      <ul className="border border-[#30363d] rounded-md divide-y divide-[#30363d]">
+      <ul className="border border-[#6b4552] rounded-md divide-y divide-[#6b4552]">
         {commits.length === 0 && (
-          <li className="p-4 text-sm text-[#8b949e]">
+          <li className="p-4 text-sm text-[#dfa8b7]">
             No commits match this filter.{" "}
-            <Link href={`/repo/${repoId}?branch=${branch}`} className="text-[#58a6ff]">
+            <Link href={`/repo/${repoId}?branch=${branch}`} className="text-[#f06fa8]">
               Clear author filter
             </Link>
           </li>
         )}
         {commits.map((c) => (
-          <li key={c.hash} className="p-4 hover:bg-[#161b22]">
-            <p className="text-[#e6edf3]">{c.message}</p>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-[#8b949e] mt-2">
-              <span className="text-[#f0883e] font-bold">{c.hash}</span>
+          <li key={c.hash} className="p-4 hover:bg-[#3d2632]">
+            <p className="text-[#fff8fa]">{c.message}</p>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-[#dfa8b7] mt-2">
+              <span className="text-[#f06fa8] font-bold">{c.hash}</span>
               <span>·</span>
               <span>{c.author}</span>
               <span>·</span>

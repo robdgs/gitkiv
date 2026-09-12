@@ -7,7 +7,16 @@ import { http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import type { Repo, Commit, BranchLock } from "@/lib/types";
 import { getArkivClient } from "./client";
-import { repoEntity, repoQuery, commitEntity, commitsQuery, lockEntity, lockQuery } from "./model";
+import {
+  repoEntity,
+  repoQuery,
+  commitEntity,
+  commitsQuery,
+  lockEntity,
+  lockQuery,
+  DEFAULT_LOCK_PRESET,
+  type LockDurationPreset,
+} from "./model";
 
 const TIRAMISU_CHAIN_ID = 7738577;
 
@@ -21,6 +30,18 @@ function getAccount() {
     );
   }
   return privateKeyToAccount(privateKey as `0x${string}`);
+}
+
+// Public info, not a secret: every entity this app creates already shows
+// this address on-chain. Exposed so the browser-side live watcher
+// (Mission 03) can filter the shared Tiramisu event stream down to just
+// this app's writes before reading anything.
+export function getWriterAddress(): string | null {
+  try {
+    return getAccount().address;
+  } catch {
+    return null;
+  }
 }
 
 async function requireFundedSigner() {
@@ -74,7 +95,7 @@ export async function createCommitOnArkiv(commit: Commit) {
   return walletClient.createEntity(commitEntity(commit));
 }
 
-export async function createBranchLockOnArkiv(lock: BranchLock) {
+export async function createBranchLockOnArkiv(lock: BranchLock, preset: LockDurationPreset = DEFAULT_LOCK_PRESET) {
   const readClient = getArkivClient();
 
   const existingRepo = await repoQuery(readClient, lock.repoId).fetch();
@@ -88,7 +109,7 @@ export async function createBranchLockOnArkiv(lock: BranchLock) {
   }
 
   const walletClient = await requireFundedSigner();
-  return walletClient.createEntity(lockEntity(lock));
+  return walletClient.createEntity(lockEntity(lock, preset));
 }
 
 // Latest commit on this branch, used as the new commit's parent — same

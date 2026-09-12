@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getArkivStatus } from "@/lib/arkiv/read";
+import { getWriterAddress } from "@/lib/arkiv/write";
 
 export async function GET() {
   try {
@@ -9,6 +10,7 @@ export async function GET() {
       currentBlock: status.currentBlock.toString(),
       currentBlockTime: status.currentBlockTime,
       blockDuration: status.blockDuration,
+      writerAddress: getWriterAddress(),
     });
   } catch (error) {
     console.error("getArkivStatus failed:", error);

@@ -2,9 +2,9 @@
 import { useSwarmLog } from "@/lib/swarm-id";
 
 const STATUS_COLOR: Record<string, string> = {
-  start: "text-[#8b949e]",
-  ok: "text-[#7ee787]",
-  error: "text-[#f85149]",
+  start: "text-[#dfa8b7]",
+  ok: "text-[#f06fa8]",
+  error: "text-[#c98799]",
 };
 
 const STATUS_ICON: Record<string, string> = {
@@ -21,19 +21,19 @@ export default function SwarmActivityLog() {
   if (entries.length === 0) return null;
 
   return (
-    <div className="mt-4 border border-[#30363d] rounded-md p-3">
-      <div className="text-xs uppercase tracking-wide text-[#8b949e] mb-2">
+    <div className="mt-4 border border-[#6b4552] rounded-md p-3">
+      <div className="text-xs uppercase tracking-wide text-[#dfa8b7] mb-2">
         Swarm activity (live SDK calls)
       </div>
       <ul className="flex flex-col gap-1 text-xs font-mono">
         {entries.map((e) => (
           <li key={e.id} className="flex items-start gap-2">
             <span className={STATUS_COLOR[e.status]}>{STATUS_ICON[e.status]}</span>
-            <span className="text-[#8b949e] whitespace-nowrap">
+            <span className="text-[#dfa8b7] whitespace-nowrap">
               {new Date(e.time).toLocaleTimeString()}
             </span>
-            <span className="text-[#d29922]">{e.action}</span>
-            <span className="text-[#c9d1d9] break-all">{e.detail}</span>
+            <span className="text-[#c98799]">{e.action}</span>
+            <span className="text-[#fff8fa] break-all">{e.detail}</span>
           </li>
         ))}
       </ul>
