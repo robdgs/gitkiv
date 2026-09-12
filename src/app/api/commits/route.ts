@@ -26,8 +26,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const { repoId, branch, author, message, fileRef, fileName, fileEncrypted, fileHistoryRef, filePublisherKey } =
-    (body ?? {}) as Record<string, unknown>;
+  const {
+    repoId,
+    branch,
+    author,
+    message,
+    fileRef,
+    fileName,
+    fileEncrypted,
+    fileHistoryRef,
+    filePublisherKey,
+    fileIsFolder,
+  } = (body ?? {}) as Record<string, unknown>;
 
   if (typeof repoId !== "string" || !repoId) {
     return NextResponse.json({ error: "repoId is required." }, { status: 400 });
@@ -46,6 +56,12 @@ export async function POST(req: NextRequest) {
   }
   if (fileName !== undefined && typeof fileName !== "string") {
     return NextResponse.json({ error: "fileName must be a string." }, { status: 400 });
+  }
+  if (fileIsFolder !== undefined && typeof fileIsFolder !== "boolean") {
+    return NextResponse.json({ error: "fileIsFolder must be a boolean." }, { status: 400 });
+  }
+  if (fileIsFolder && fileEncrypted) {
+    return NextResponse.json({ error: "Folder uploads can't be encrypted." }, { status: 400 });
   }
   if (fileEncrypted) {
     if (typeof fileHistoryRef !== "string" || !/^[0-9a-f]{64}([0-9a-f]{64})?$/i.test(fileHistoryRef)) {
@@ -74,6 +90,7 @@ export async function POST(req: NextRequest) {
       ? {
           fileRef,
           fileName: (fileName as string | undefined)?.slice(0, 100) ?? "file",
+          ...(fileIsFolder ? { fileIsFolder: true } : {}),
           ...(fileEncrypted
             ? {
                 fileEncrypted: true,

@@ -128,6 +128,10 @@ export function repoCommitsQuery(client: PublicArkivClient, repoId: string) {
 
 // The compound filter Mission 01 asks for: (repoId, branch), optionally
 // narrowed by author — never a single-attribute scan over every commit.
+// `key` is selected alongside the payload (not just here for reading) so a
+// caller can also patch these entities in place — see
+// moveBranchCommitsOnArkiv, which reassigns a merged branch's commits onto
+// their target branch by entity key rather than recreating them.
 export function commitsQuery(client: PublicArkivClient, repoId: string, branch: string, author?: string) {
   const filters: Expression[] = [
     eq("kind", str("commit")),
@@ -136,7 +140,7 @@ export function commitsQuery(client: PublicArkivClient, repoId: string, branch: 
   ];
   if (author) filters.push(eq("author", str(author)));
 
-  return client.select({ payload: true }).where(filters).limit(100);
+  return client.select({ payload: true, key: true }).where(filters).limit(100);
 }
 
 // ---- branch lock entity (Mission 02: Built to expire) --------------

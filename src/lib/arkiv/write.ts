@@ -2,6 +2,7 @@
 // runs server-side in the Next.js app router), so ARKIV_PRIVATE_KEY never
 // reaches the browser bundle.
 import { createWalletClient, jsonToPayload } from "@arkiv-network/sdk";
+import { str } from "@arkiv-network/sdk/attr";
 import { tiramisu } from "@arkiv-network/sdk/chains";
 import { http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -163,6 +164,29 @@ export async function starRepoOnArkiv(repoId: string) {
     contentType: "application/json",
   });
   return { count, entityKey: result.entityKey, txHash: result.txHash };
+}
+
+// After a merge, the source branch's commits shouldn't linger there too —
+// the work now lives on the target branch, same as the merge commit
+// itself. This reassigns each one's `branch` attribute (and the mirrored
+// field inside its payload) to the target branch, in place: same entity
+// key, same hash/author/timestamp, just no longer answering the source
+// branch's compound query.
+export async function moveBranchCommitsOnArkiv(repoId: string, fromBranch: string, toBranch: string) {
+  const readClient = getArkivClient();
+  const page = await commitsQuery(readClient, repoId, fromBranch).fetch();
+  if (page.entities.length === 0) return;
+
+  const walletClient = await requireFundedSigner();
+  for (const entity of page.entities) {
+    const commit = entity.toJson() as Commit;
+    await walletClient.patchEntity({
+      entityKey: entity.key,
+      set: { branch: str(toBranch) },
+      payload: jsonToPayload({ ...commit, branch: toBranch }),
+      contentType: "application/json",
+    });
+  }
 }
 
 // Latest commit on this branch, used as the new commit's parent — same

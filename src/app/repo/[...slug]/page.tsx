@@ -69,13 +69,24 @@ export default async function RepoDetailPage({
         )}
         {commits.map((c) => (
           <li key={c.hash} className="p-4 hover:bg-[#3d2632]">
-            <p className="text-[#fff8fa]">{c.message}</p>
+            <p className="text-[#fff8fa]">
+              {c.mergedFromBranch ? "🔀 " : ""}
+              {c.message}
+            </p>
             <div className="flex flex-wrap items-center gap-2 text-xs text-[#dfa8b7] mt-2">
               <span className="text-[#f06fa8] font-bold">{c.hash}</span>
               <span>·</span>
               <span>{c.author}</span>
               <span>·</span>
               <span>{new Date(c.timestamp * 1000).toISOString().slice(0, 10)}</span>
+              {c.mergedFromBranch && c.mergedFromHash && (
+                <>
+                  <span>·</span>
+                  <span>
+                    merged {c.mergedFromBranch}@<span className="text-[#c98799]">{c.mergedFromHash}</span>
+                  </span>
+                </>
+              )}
               {c.fileRef && (
                 <>
                   <span>·</span>
@@ -85,6 +96,7 @@ export default async function RepoDetailPage({
                     encrypted={c.fileEncrypted}
                     historyRef={c.fileHistoryRef}
                     publisherKey={c.filePublisherKey}
+                    isFolder={c.fileIsFolder}
                   />
                 </>
               )}

@@ -63,6 +63,14 @@ export type ActivityEvent = {
   detail: string;
 };
 
+// Module-scoped, not per-call: watchRepoActivity is re-invoked every time
+// its caller's effect re-runs (branch switch, React Strict Mode's dev-only
+// double-invoke, a remount), each time as a fresh function call. A counter
+// declared inside that function would restart at 1 on every one of those,
+// colliding with ids already sitting in the caller's still-mounted state
+// from the previous instance — which is exactly the duplicate React key.
+let nextActivityId = 1;
+
 // Watches every entity Arkiv creates on Tiramisu (this is a shared public
 // network — without an owner filter you'd see everyone's entities), keeps
 // only the ones our own writer wallet created, reads those to check their
@@ -74,7 +82,6 @@ export function watchRepoActivity(
   ownerAddress: string,
   onEvent: (event: ActivityEvent) => void
 ): () => void {
-  let nextId = 1;
   const pending = new Set<string>();
   let busy = false;
   let stopped = false;
@@ -97,7 +104,7 @@ export function watchRepoActivity(
       const seenBranch = branchAttr?.type === "str" ? branchAttr.value : "?";
       const matched = seenRepo === repoId && seenBranch === branch;
       onEvent({
-        id: nextId++,
+        id: nextActivityId++,
         time: Date.now(),
         kind,
         matched,

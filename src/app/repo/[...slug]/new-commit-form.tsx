@@ -6,14 +6,21 @@ import { useSwarmId } from "@/lib/swarm-id";
 const inputClass =
   "bg-[#3d2632] border border-[#6b4552] rounded-md px-3 py-1.5 text-sm text-[#fff8fa] focus:outline-none focus:border-[#f06fa8]";
 
-type Receipt = { entityKey: string; txHash: string; fileRef?: string; encrypted?: boolean };
+type Receipt = { entityKey: string; txHash: string; fileRef?: string; encrypted?: boolean; isFolder?: boolean };
 type AttachedFile = {
   reference: string;
   name: string;
   encrypted: boolean;
   historyReference?: string;
   publisherPubKey?: string;
+  isFolder?: boolean;
+  hasIndex?: boolean;
+  paths?: string[];
 };
+
+// gateway.ethswarm.org's own /access/<ref> page is the public link that's
+// actually reachable — see the matching comment in commit-file-link.tsx.
+const GATEWAY = "https://gateway.ethswarm.org";
 
 // Compressed secp256k1 public keys are 33 bytes = 66 hex chars, optionally
 // 0x-prefixed in how people paste them.
@@ -35,7 +42,7 @@ function parseGrantees(raw: string): { keys: string[]; invalid: string[] } {
 
 export default function NewCommitForm({ repoId, branch }: { repoId: string; branch: string }) {
   const router = useRouter();
-  const { info, connect, uploadFile, actUploadFile } = useSwarmId();
+  const { info, connect, uploadFile, uploadFolder, actUploadFile } = useSwarmId();
   const [open, setOpen] = useState(false);
   const [author, setAuthor] = useState("");
   const [message, setMessage] = useState("");
@@ -45,6 +52,7 @@ export default function NewCommitForm({ repoId, branch }: { repoId: string; bran
   const [file, setFile] = useState<AttachedFile | null>(null);
   const [fileUploading, setFileUploading] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [folderProgress, setFolderProgress] = useState<{ done: number; total: number; path: string } | null>(null);
   const [encrypt, setEncrypt] = useState(false);
   const [granteesInput, setGranteesInput] = useState("");
 
@@ -79,6 +87,32 @@ export default function NewCommitForm({ repoId, branch }: { repoId: string; bran
     }
   }
 
+  async function handleFolderPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const picked = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (picked.length === 0) return;
+    setFileUploading(true);
+    setFileError(null);
+    setFolderProgress(null);
+    try {
+      const result = await uploadFolder(picked, (done, total, path) => setFolderProgress({ done, total, path }));
+      const topLevel = picked[0]?.webkitRelativePath?.split("/")[0] || "folder";
+      setFile({
+        reference: result.rootReference,
+        name: `${topLevel}/ (${result.fileCount} file${result.fileCount === 1 ? "" : "s"})`,
+        encrypted: false,
+        isFolder: true,
+        hasIndex: result.hasIndex,
+        paths: result.paths,
+      });
+    } catch (err) {
+      setFileError(err instanceof Error ? err.message : "Folder upload to Swarm failed.");
+    } finally {
+      setFileUploading(false);
+      setFolderProgress(null);
+    }
+  }
+
   async function submit(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -98,6 +132,7 @@ export default function NewCommitForm({ repoId, branch }: { repoId: string; bran
           fileEncrypted: file?.encrypted || undefined,
           fileHistoryRef: file?.historyReference,
           filePublisherKey: file?.publisherPubKey,
+          fileIsFolder: file?.isFolder || undefined,
         }),
       });
       const data = await res.json();
@@ -108,6 +143,7 @@ export default function NewCommitForm({ repoId, branch }: { repoId: string; bran
         txHash: data.txHash,
         fileRef: file?.reference,
         encrypted: file?.encrypted,
+        isFolder: file?.isFolder,
       });
       setFile(null);
       setEncrypt(false);
@@ -179,18 +215,34 @@ export default function NewCommitForm({ repoId, branch }: { repoId: string; bran
             {info.uploadUnavailableReason === "no-stamp" ? " (no storage stamp)." : "."}
           </p>
         ) : file ? (
-          <div className="flex items-center gap-3 text-xs">
-            <span className="text-[#f06fa8]">
-              {file.encrypted ? "🔒" : "📄"} {file.name} — uploaded to Swarm
-              {file.encrypted ? " (encrypted)" : ""}
-            </span>
-            <button
-              type="button"
-              onClick={() => setFile(null)}
-              className="text-[#dfa8b7] hover:text-[#fff8fa] cursor-pointer"
-            >
-              remove
-            </button>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-3 text-xs">
+              <span className="text-[#f06fa8]">
+                {file.isFolder ? "📁" : file.encrypted ? "🔒" : "📄"} {file.name} — uploaded to Swarm
+                {file.encrypted ? " (encrypted)" : ""}
+              </span>
+              <button
+                type="button"
+                onClick={() => setFile(null)}
+                className="text-[#dfa8b7] hover:text-[#fff8fa] cursor-pointer"
+              >
+                remove
+              </button>
+            </div>
+            {file.isFolder && file.hasIndex === false && (
+              <p className="text-xs text-[#c98799] break-all">
+                No &quot;index.html&quot; sat directly inside the folder you picked — did you select
+                the project root instead of its build output (dist/, build/)? The folder still
+                uploaded, but there&apos;s no default page to open.
+                {file.paths && file.paths.length > 0 && (
+                  <>
+                    {" "}
+                    Detected instead: {file.paths.slice(0, 20).join(", ")}
+                    {file.paths.length > 20 ? `, +${file.paths.length - 20} more` : ""}
+                  </>
+                )}
+              </p>
+            )}
           </div>
         ) : (
           <div className="flex flex-col gap-2">
@@ -231,11 +283,32 @@ export default function NewCommitForm({ repoId, branch }: { repoId: string; bran
               disabled={fileUploading}
               className="text-xs text-[#dfa8b7] file:mr-3 file:px-3 file:py-1.5 file:rounded-md file:border file:border-[#6b4552] file:bg-[#3d2632] file:text-[#fff8fa] file:text-xs file:cursor-pointer"
             />
+
+            {!encrypt && (
+              <div>
+                <label className="text-xs text-[#dfa8b7] block mb-1">
+                  …or attach a whole folder (a build output — dist/, build/ — not a repo; no ACT
+                  encryption for folders)
+                </label>
+                <input
+                  type="file"
+                  {...{ webkitdirectory: "", directory: "" }}
+                  multiple
+                  onChange={handleFolderPick}
+                  disabled={fileUploading}
+                  className="text-xs text-[#dfa8b7] file:mr-3 file:px-3 file:py-1.5 file:rounded-md file:border file:border-[#6b4552] file:bg-[#3d2632] file:text-[#fff8fa] file:text-xs file:cursor-pointer"
+                />
+              </div>
+            )}
           </div>
         )}
         {fileUploading && (
           <p className="text-xs text-[#dfa8b7] mt-1">
-            {encrypt ? "Encrypting and uploading to Swarm…" : "Uploading to Swarm…"}
+            {folderProgress
+              ? `Uploading ${folderProgress.done}/${folderProgress.total}: ${folderProgress.path}…`
+              : encrypt
+                ? "Encrypting and uploading to Swarm…"
+                : "Uploading to Swarm…"}
           </p>
         )}
         {fileError && <p className="text-xs font-semibold text-[#f06fa8] mt-1">{fileError}</p>}
@@ -254,9 +327,16 @@ export default function NewCommitForm({ repoId, branch }: { repoId: string; bran
           </div>
           {receipt.fileRef && (
             <div className="text-[#dfa8b7] break-all">
-              swarm reference{receipt.encrypted ? " (encrypted)" : ""}:{" "}
+              swarm reference{receipt.encrypted ? " (encrypted)" : receipt.isFolder ? " (folder manifest)" : ""}:{" "}
               <span className="text-[#fff8fa]">{receipt.fileRef}</span>
             </div>
+          )}
+          {receipt.isFolder && (
+            <p className="text-[#dfa8b7]">
+              The commit below links to this via gateway.ethswarm.org — a real Bee gateway resolving the
+              manifest server-side, more reliable for a folder than this app&apos;s own chunk-by-chunk
+              client download.
+            </p>
           )}
           <div className="flex gap-4 mt-0.5">
             <a
@@ -267,6 +347,16 @@ export default function NewCommitForm({ repoId, branch }: { repoId: string; bran
             >
               View transaction ↗
             </a>
+            {receipt.isFolder && receipt.fileRef && (
+              <a
+                className="text-[#f06fa8]"
+                target="_blank"
+                rel="noreferrer"
+                href={`${GATEWAY}/access/${receipt.fileRef}`}
+              >
+                Browse folder ↗
+              </a>
+            )}
             <a
               className="text-[#f06fa8]"
               target="_blank"

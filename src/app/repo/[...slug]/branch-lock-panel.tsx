@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import NewCommitForm from "./new-commit-form";
+import MergeBranchPanel from "./merge-branch-panel";
 
 type Lock = { repoId: string; branch: string; author: string; lockedAt: number; expiresAt: string };
 type Receipt = { entityKey: string; txHash: string };
@@ -107,8 +108,8 @@ export default function BranchLockPanel({ repoId, branch }: { repoId: string; br
           🔒 {branch} is locked by {lock.author}
         </div>
         <p className="text-xs text-[#dfa8b7] mt-1">
-          New commits are disabled while this reservation is active. It will lift itself — this app
-          never calls a delete or a cleanup job.
+          New commits and merges are disabled while this reservation is active. It will lift itself —
+          this app never calls a delete or a cleanup job.
         </p>
         <p className="text-xs text-[#dfa8b7] mt-1">
           {blocksLeft !== null && blocksLeft > 0
@@ -249,6 +250,8 @@ export default function BranchLockPanel({ repoId, branch }: { repoId: string; br
           </div>
         </form>
       )}
+
+      <MergeBranchPanel repoId={repoId} targetBranch={branch} />
 
       <NewCommitForm repoId={repoId} branch={branch} />
     </div>

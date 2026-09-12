@@ -29,6 +29,16 @@ export type Commit = {
   fileEncrypted?: boolean;
   fileHistoryRef?: string;
   filePublisherKey?: string;
+  // Set when `fileRef` is a Mantaray manifest root (a folder), not a single
+  // file's content reference — `/bzz/<fileRef>/` serves it, downloadFile()
+  // does not. Folders are never encrypted (no ACT-over-manifest support).
+  fileIsFolder?: boolean;
+  // Set on a merge commit: a second parent pointer, exactly like a real git
+  // merge commit's second parent, except there's no tree/diff to combine
+  // here (no code lives on Arkiv) — this just records that the merge
+  // happened and where the source branch was at that moment.
+  mergedFromBranch?: string;
+  mergedFromHash?: string | null;
 };
 
 // ETHRome Mission 02 (Built to expire): a short-lived reservation on a
