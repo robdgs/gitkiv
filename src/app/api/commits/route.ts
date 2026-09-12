@@ -26,7 +26,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const { repoId, branch, author, message, fileRef, fileName } = (body ?? {}) as Record<string, unknown>;
+  const { repoId, branch, author, message, fileRef, fileName, fileEncrypted, fileHistoryRef, filePublisherKey } =
+    (body ?? {}) as Record<string, unknown>;
 
   if (typeof repoId !== "string" || !repoId) {
     return NextResponse.json({ error: "repoId is required." }, { status: 400 });
@@ -46,6 +47,20 @@ export async function POST(req: NextRequest) {
   if (fileName !== undefined && typeof fileName !== "string") {
     return NextResponse.json({ error: "fileName must be a string." }, { status: 400 });
   }
+  if (fileEncrypted) {
+    if (typeof fileHistoryRef !== "string" || !/^[0-9a-f]{64}([0-9a-f]{64})?$/i.test(fileHistoryRef)) {
+      return NextResponse.json(
+        { error: "fileHistoryRef must be a 64 or 128 character hex reference." },
+        { status: 400 }
+      );
+    }
+    if (typeof filePublisherKey !== "string" || !/^[0-9a-f]{66}$/i.test(filePublisherKey)) {
+      return NextResponse.json(
+        { error: "filePublisherKey must be a 66 character hex compressed public key." },
+        { status: 400 }
+      );
+    }
+  }
 
   const commit: Commit = {
     hash: randomBytes(4).toString("hex"),
@@ -55,7 +70,19 @@ export async function POST(req: NextRequest) {
     parentHash: await getLatestCommitHash(repoId, branch),
     timestamp: Math.floor(Date.now() / 1000),
     message: message.trim().slice(0, 200),
-    ...(fileRef ? { fileRef, fileName: (fileName as string | undefined)?.slice(0, 100) ?? "file" } : {}),
+    ...(fileRef
+      ? {
+          fileRef,
+          fileName: (fileName as string | undefined)?.slice(0, 100) ?? "file",
+          ...(fileEncrypted
+            ? {
+                fileEncrypted: true,
+                fileHistoryRef: fileHistoryRef as string,
+                filePublisherKey: filePublisherKey as string,
+              }
+            : {}),
+        }
+      : {}),
   };
 
   try {

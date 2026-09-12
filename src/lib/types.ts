@@ -18,6 +18,12 @@ export type Commit = {
   // pointer. `fileRef` is the Swarm reference (hash) from @snaha/swarm-id.
   fileRef?: string;
   fileName?: string;
+  // Set when the file was uploaded via actUploadData (conditional
+  // disclosure): `fileRef` then holds the *encrypted* reference, and these
+  // two extra fields are required to ever decrypt it back.
+  fileEncrypted?: boolean;
+  fileHistoryRef?: string;
+  filePublisherKey?: string;
 };
 
 // ETHRome Mission 02 (Built to expire): a short-lived reservation on a

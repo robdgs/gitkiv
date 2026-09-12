@@ -4,6 +4,7 @@ import { getRepoFromArkiv, getCommitsFromArkiv } from "@/lib/arkiv/read";
 import BranchSwitcher from "./branch-switcher";
 import BranchLockPanel from "./branch-lock-panel";
 import CommitFileLink from "./commit-file-link";
+import SwarmActivityLog from "./swarm-activity-log";
 
 export const dynamic = "force-dynamic";
 
@@ -64,13 +65,21 @@ export default async function RepoDetailPage({
               {c.fileRef && (
                 <>
                   <span>·</span>
-                  <CommitFileLink fileRef={c.fileRef} fileName={c.fileName ?? "file"} />
+                  <CommitFileLink
+                    fileRef={c.fileRef}
+                    fileName={c.fileName ?? "file"}
+                    encrypted={c.fileEncrypted}
+                    historyRef={c.fileHistoryRef}
+                    publisherKey={c.filePublisherKey}
+                  />
                 </>
               )}
             </div>
           </li>
         ))}
       </ul>
+
+      <SwarmActivityLog />
     </div>
   );
 }

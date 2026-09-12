@@ -6,12 +6,36 @@ import { useSwarmId } from "@/lib/swarm-id";
 const inputClass =
   "bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-1.5 text-sm text-[#c9d1d9] focus:outline-none focus:border-[#58a6ff]";
 
-type Receipt = { entityKey: string; txHash: string; fileRef?: string };
-type AttachedFile = { reference: string; name: string };
+type Receipt = { entityKey: string; txHash: string; fileRef?: string; encrypted?: boolean };
+type AttachedFile = {
+  reference: string;
+  name: string;
+  encrypted: boolean;
+  historyReference?: string;
+  publisherPubKey?: string;
+};
+
+// Compressed secp256k1 public keys are 33 bytes = 66 hex chars, optionally
+// 0x-prefixed in how people paste them.
+const PUBKEY_RE = /^(0x)?[0-9a-f]{66}$/i;
+
+function parseGrantees(raw: string): { keys: string[]; invalid: string[] } {
+  const tokens = raw
+    .split(/[\s,]+/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+  const keys: string[] = [];
+  const invalid: string[] = [];
+  for (const t of tokens) {
+    if (PUBKEY_RE.test(t)) keys.push(t.replace(/^0x/i, "").toLowerCase());
+    else invalid.push(t);
+  }
+  return { keys, invalid };
+}
 
 export default function NewCommitForm({ repoId, branch }: { repoId: string; branch: string }) {
   const router = useRouter();
-  const { info, connect, uploadFile } = useSwarmId();
+  const { info, connect, uploadFile, actUploadFile } = useSwarmId();
   const [open, setOpen] = useState(false);
   const [author, setAuthor] = useState("");
   const [message, setMessage] = useState("");
@@ -21,6 +45,8 @@ export default function NewCommitForm({ repoId, branch }: { repoId: string; bran
   const [file, setFile] = useState<AttachedFile | null>(null);
   const [fileUploading, setFileUploading] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [encrypt, setEncrypt] = useState(false);
+  const [granteesInput, setGranteesInput] = useState("");
 
   async function handleFilePick(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = e.target.files?.[0];
@@ -29,8 +55,23 @@ export default function NewCommitForm({ repoId, branch }: { repoId: string; bran
     setFileUploading(true);
     setFileError(null);
     try {
-      const result = await uploadFile(picked);
-      setFile({ reference: result.reference, name: picked.name });
+      if (encrypt) {
+        const { keys, invalid } = parseGrantees(granteesInput);
+        if (invalid.length > 0) {
+          throw new Error(`Not a valid public key (66 hex chars): ${invalid[0]}`);
+        }
+        const result = await actUploadFile(picked, keys);
+        setFile({
+          reference: result.encryptedReference,
+          name: picked.name,
+          encrypted: true,
+          historyReference: result.historyReference,
+          publisherPubKey: result.publisherPubKey,
+        });
+      } else {
+        const result = await uploadFile(picked);
+        setFile({ reference: result.reference, name: picked.name, encrypted: false });
+      }
     } catch (err) {
       setFileError(err instanceof Error ? err.message : "Upload to Swarm failed.");
     } finally {
@@ -54,13 +95,23 @@ export default function NewCommitForm({ repoId, branch }: { repoId: string; bran
           message,
           fileRef: file?.reference,
           fileName: file?.name,
+          fileEncrypted: file?.encrypted || undefined,
+          fileHistoryRef: file?.historyReference,
+          filePublisherKey: file?.publisherPubKey,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to create commit.");
       setMessage("");
-      setReceipt({ entityKey: data.entityKey, txHash: data.txHash, fileRef: file?.reference });
+      setReceipt({
+        entityKey: data.entityKey,
+        txHash: data.txHash,
+        fileRef: file?.reference,
+        encrypted: file?.encrypted,
+      });
       setFile(null);
+      setEncrypt(false);
+      setGranteesInput("");
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -129,7 +180,10 @@ export default function NewCommitForm({ repoId, branch }: { repoId: string; bran
           </p>
         ) : file ? (
           <div className="flex items-center gap-3 text-xs">
-            <span className="text-[#7ee787]">📄 {file.name} — uploaded to Swarm</span>
+            <span className="text-[#7ee787]">
+              {file.encrypted ? "🔒" : "📄"} {file.name} — uploaded to Swarm
+              {file.encrypted ? " (encrypted)" : ""}
+            </span>
             <button
               type="button"
               onClick={() => setFile(null)}
@@ -139,14 +193,51 @@ export default function NewCommitForm({ repoId, branch }: { repoId: string; bran
             </button>
           </div>
         ) : (
-          <input
-            type="file"
-            onChange={handleFilePick}
-            disabled={fileUploading}
-            className="text-xs text-[#8b949e] file:mr-3 file:px-3 file:py-1.5 file:rounded-md file:border file:border-[#30363d] file:bg-[#21262d] file:text-[#c9d1d9] file:text-xs file:cursor-pointer"
-          />
+          <div className="flex flex-col gap-2">
+            <label className="flex items-center gap-2 text-xs text-[#8b949e]">
+              <input
+                type="checkbox"
+                checked={encrypt}
+                onChange={(e) => setEncrypt(e.target.checked)}
+                className="cursor-pointer"
+              />
+              🔒 Encrypt (conditional disclosure — only listed people can decrypt it)
+            </label>
+
+            {encrypt && (
+              <div className="border border-[#30363d] rounded-md p-3 flex flex-col gap-2">
+                {info.appKey?.publicKey && (
+                  <p className="text-xs text-[#8b949e] break-all">
+                    Your public key (share so others can grant you access):{" "}
+                    <span className="text-[#c9d1d9]">{info.appKey.publicKey}</span>
+                  </p>
+                )}
+                <label className="text-xs text-[#8b949e] block">
+                  Grantee public keys (comma/space/newline separated — leave empty for only you)
+                </label>
+                <textarea
+                  value={granteesInput}
+                  onChange={(e) => setGranteesInput(e.target.value)}
+                  placeholder="03a1b2c3... (66 hex chars each)"
+                  rows={2}
+                  className={`${inputClass} w-full font-mono`}
+                />
+              </div>
+            )}
+
+            <input
+              type="file"
+              onChange={handleFilePick}
+              disabled={fileUploading}
+              className="text-xs text-[#8b949e] file:mr-3 file:px-3 file:py-1.5 file:rounded-md file:border file:border-[#30363d] file:bg-[#21262d] file:text-[#c9d1d9] file:text-xs file:cursor-pointer"
+            />
+          </div>
         )}
-        {fileUploading && <p className="text-xs text-[#8b949e] mt-1">Uploading to Swarm…</p>}
+        {fileUploading && (
+          <p className="text-xs text-[#8b949e] mt-1">
+            {encrypt ? "Encrypting and uploading to Swarm…" : "Uploading to Swarm…"}
+          </p>
+        )}
         {fileError && <p className="text-xs text-[#f85149] mt-1">{fileError}</p>}
       </div>
 
@@ -163,7 +254,8 @@ export default function NewCommitForm({ repoId, branch }: { repoId: string; bran
           </div>
           {receipt.fileRef && (
             <div className="text-[#8b949e] break-all">
-              swarm reference: <span className="text-[#c9d1d9]">{receipt.fileRef}</span>
+              swarm reference{receipt.encrypted ? " (encrypted)" : ""}:{" "}
+              <span className="text-[#c9d1d9]">{receipt.fileRef}</span>
             </div>
           )}
           <div className="flex gap-4 mt-0.5">
