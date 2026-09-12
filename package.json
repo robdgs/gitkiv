@@ -6,13 +6,18 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "arkiv:wallet": "tsx scripts/arkiv-wallet.ts",
+    "arkiv:seed": "tsx scripts/arkiv-seed.ts"
   },
   "dependencies": {
+    "@arkiv-network/sdk": "^0.8.0",
+    "@snaha/swarm-id": "^0.4.1",
     "next": "16.3.5",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "tsx": "^4.23.13"
+    "tsx": "^4.23.13",
+    "viem": "^2.56.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
