@@ -7,6 +7,7 @@ import CommitFileLink from "./commit-file-link";
 import SwarmActivityLog from "./swarm-activity-log";
 import LiveFeed from "./live-feed";
 import StarButton from "./star-button";
+import IssuesPanel from "./issues-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -104,6 +105,9 @@ export default async function RepoDetailPage({
           </li>
         ))}
       </ul>
+
+      <div className="text-xs uppercase tracking-wide text-[#dfa8b7] mt-6 mb-2">Issues</div>
+      <IssuesPanel repoId={repoId} />
 
       <SwarmActivityLog />
     </div>

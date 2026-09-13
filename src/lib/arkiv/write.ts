@@ -6,7 +6,7 @@ import { str } from "@arkiv-network/sdk/attr";
 import { tiramisu } from "@arkiv-network/sdk/chains";
 import { http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import type { Repo, Commit, BranchLock } from "@/lib/types";
+import type { Repo, Commit, BranchLock, Issue, IssueStatus } from "@/lib/types";
 import { getArkivClient } from "./client";
 import {
   repoEntity,
@@ -20,6 +20,9 @@ import {
   branchQuery,
   starCountEntity,
   starCountQuery,
+  issueEntity,
+  issuesQuery,
+  issueQuery,
 } from "./model";
 
 const TIRAMISU_CHAIN_ID = 7738577;
@@ -197,4 +200,66 @@ export async function getLatestCommitHash(repoId: string, branch: string): Promi
   const page = await commitsQuery(readClient, repoId, branch).fetch();
   const latest = page.entities[0]?.toJson() as Commit | undefined;
   return latest?.hash ?? null;
+}
+
+// Issue numbers are repo-scoped and assigned here, not by the caller: the
+// next number is one past however many issues already exist on this repo.
+// Good enough for a demo — like the rest of this app's writes, there's no
+// concurrency lock, so two issues filed in the same instant could in
+// principle race for the same number. A real product would need a
+// dedicated counter entity (patched atomically) to close that gap.
+export async function createIssueOnArkiv(repoId: string, title: string, body: string, author: string) {
+  const readClient = getArkivClient();
+
+  const existingRepo = await repoQuery(readClient, repoId).fetch();
+  if (existingRepo.entities.length === 0) {
+    throw new ArkivWriteError(`Repository "${repoId}" does not exist.`);
+  }
+
+  const existingIssues = await issuesQuery(readClient, repoId).fetch();
+  const number = existingIssues.entities.length + 1;
+
+  const issue: Issue = {
+    repoId,
+    number,
+    title: title.trim().slice(0, 120),
+    body: body.trim().slice(0, 2000),
+    author: author.trim().slice(0, 60),
+    status: "open",
+    createdAt: Math.floor(Date.now() / 1000),
+    closedAt: null,
+  };
+
+  const walletClient = await requireFundedSigner();
+  const result = await walletClient.createEntity(issueEntity(issue));
+  return { issue, entityKey: result.entityKey, txHash: result.txHash };
+}
+
+// Close or reopen: patches both the queryable `status` attribute (so
+// "open issues" queries pick up the change) and the payload (so a read
+// doesn't show a stale status next to the up-to-date attribute).
+export async function setIssueStatusOnArkiv(repoId: string, number: number, status: IssueStatus) {
+  const readClient = getArkivClient();
+
+  const existing = await issueQuery(readClient, repoId, number).fetch();
+  const entity = existing.entities[0];
+  if (!entity) {
+    throw new ArkivWriteError(`Issue #${number} on "${repoId}" does not exist.`);
+  }
+
+  const current = entity.toJson() as Issue;
+  const updated: Issue = {
+    ...current,
+    status,
+    closedAt: status === "closed" ? Math.floor(Date.now() / 1000) : null,
+  };
+
+  const walletClient = await requireFundedSigner();
+  const result = await walletClient.patchEntity({
+    entityKey: entity.key,
+    set: { status: str(status) },
+    payload: jsonToPayload(updated),
+    contentType: "application/json",
+  });
+  return { issue: updated, entityKey: result.entityKey, txHash: result.txHash };
 }

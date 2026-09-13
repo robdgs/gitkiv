@@ -11,9 +11,9 @@
 // are out of scope for this Arkiv migration (Swarm, later).
 // ------------------------------------------------------------------
 import { ExpirationTime, jsonToPayload, type PublicArkivClient } from "@arkiv-network/sdk";
-import { str } from "@arkiv-network/sdk/attr";
+import { str, i32 } from "@arkiv-network/sdk/attr";
 import { eq, type Expression } from "@arkiv-network/sdk/query";
-import type { Repo, Commit, BranchLock, Branch } from "@/lib/types";
+import type { Repo, Commit, BranchLock, Branch, Issue, IssueStatus } from "@/lib/types";
 
 // A long-lived demo lifetime. Mission 01 is about the read path, not
 // expiration (that's Mission 02) — these entities should outlive the demo.
@@ -195,6 +195,46 @@ export function starCountQuery(client: PublicArkivClient, repoId: string) {
   return client
     .select({ key: true, payload: true })
     .where(eq("kind", str("star_count")), eq("repo_id", str(repoId)))
+    .limit(1);
+}
+
+// ---- issue entity ---------------------------------------------------
+//
+// GitHub-style issues: `status` is a queryable attribute (not just a
+// payload field) specifically so "open issues on this repo" is a compound
+// filter, same shape as every other list in this app — never a client-side
+// scan-and-filter over every issue ever filed. `number` is also an
+// attribute (i32 — small, bounded, nothing like the timestamp-in-i32
+// mistake Arkiv's own docs warn about) so a close/reopen action can look
+// up one exact issue by (repo_id, number) instead of refetching the list.
+
+export function issueEntity(issue: Issue) {
+  return {
+    attributes: {
+      kind: str("issue"),
+      repo_id: str(issue.repoId),
+      number: i32(issue.number),
+      status: str(issue.status),
+    },
+    payload: jsonToPayload(issue),
+    contentType: "application/json",
+    expires: ENTITY_LIFETIME,
+  };
+}
+
+// `key` is selected alongside payload so every issue in a list carries its
+// own entity key — not just the one most recently created or closed — so
+// each row can link straight to its own history on the explorer.
+export function issuesQuery(client: PublicArkivClient, repoId: string, status?: IssueStatus) {
+  const filters: Expression[] = [eq("kind", str("issue")), eq("repo_id", str(repoId))];
+  if (status) filters.push(eq("status", str(status)));
+  return client.select({ payload: true, key: true }).where(filters).limit(100);
+}
+
+export function issueQuery(client: PublicArkivClient, repoId: string, number: number) {
+  return client
+    .select({ payload: true, key: true })
+    .where(eq("kind", str("issue")), eq("repo_id", str(repoId)), eq("number", i32(number)))
     .limit(1);
 }
 

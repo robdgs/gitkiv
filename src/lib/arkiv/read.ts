@@ -2,7 +2,7 @@
 // Same exported shapes (Repo[], Commit[]) so call sites don't change beyond
 // the import. The read path below never touches sqlite, a subgraph, Ponder
 // or a Postgres pipeline — only Arkiv's public RPC.
-import type { Repo, Commit, BranchLock, Branch } from "@/lib/types";
+import type { Repo, Commit, BranchLock, Branch, Issue, IssueStatus } from "@/lib/types";
 import { getArkivClient } from "./client";
 import {
   reposQuery,
@@ -13,6 +13,7 @@ import {
   starCountQuery,
   allStarCountsQuery,
   repoCommitsQuery,
+  issuesQuery,
 } from "./model";
 
 export type ActiveLock = BranchLock & { expiresAt: bigint };
@@ -122,4 +123,18 @@ export async function getCommitsFromArkiv(
   const page = await commitsQuery(client, repoId, branch, author).fetch();
   const commits = page.entities.map((entity) => entity.toJson() as Commit);
   return commits.sort((a, b) => b.timestamp - a.timestamp);
+}
+
+export type IssueWithKey = Issue & { entityKey: string };
+
+// `status` is optional so the issues panel can ask for just "open" or
+// "closed" — a real compound filter, not a full fetch filtered client-side.
+// Each issue carries its own entity key (see issuesQuery) so the UI can
+// link every row to its own verifiable history, not just whichever one
+// was most recently created or closed.
+export async function getIssuesFromArkiv(repoId: string, status?: IssueStatus): Promise<IssueWithKey[]> {
+  const client = getArkivClient();
+  const page = await issuesQuery(client, repoId, status).fetch();
+  const issues = page.entities.map((entity) => ({ ...(entity.toJson() as Issue), entityKey: entity.key }));
+  return issues.sort((a, b) => b.number - a.number);
 }

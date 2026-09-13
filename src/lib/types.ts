@@ -50,3 +50,16 @@ export type BranchLock = {
   author: string;
   lockedAt: number; // unix seconds, display only
 };
+
+export type IssueStatus = "open" | "closed";
+
+export type Issue = {
+  repoId: string;
+  number: number; // repo-scoped, assigned at creation (count of existing issues + 1)
+  title: string;
+  body: string;
+  author: string;
+  status: IssueStatus;
+  createdAt: number; // unix seconds
+  closedAt: number | null; // unix seconds, set when status becomes "closed"
+};
