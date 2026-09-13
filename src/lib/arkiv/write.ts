@@ -6,7 +6,7 @@ import { str } from "@arkiv-network/sdk/attr";
 import { tiramisu } from "@arkiv-network/sdk/chains";
 import { http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import type { Repo, Commit, BranchLock, Issue, IssueStatus, ProfileReadme } from "@/lib/types";
+import type { Repo, Commit, BranchLock, Issue, IssueStatus, ProfileReadme, RepoReadme } from "@/lib/types";
 import { getArkivClient } from "./client";
 import {
   repoEntity,
@@ -25,6 +25,8 @@ import {
   issueQuery,
   profileReadmeEntity,
   profileReadmeQuery,
+  repoReadmeEntity,
+  repoReadmeQuery,
 } from "./model";
 
 const TIRAMISU_CHAIN_ID = 7738577;
@@ -280,6 +282,35 @@ export async function setProfileReadmeOnArkiv(markdown: string) {
 
   if (!entity) {
     const result = await walletClient.createEntity(profileReadmeEntity(readme));
+    return { readme, entityKey: result.entityKey, txHash: result.txHash };
+  }
+
+  const result = await walletClient.patchEntity({
+    entityKey: entity.key,
+    payload: jsonToPayload(readme),
+    contentType: "application/json",
+  });
+  return { readme, entityKey: result.entityKey, txHash: result.txHash };
+}
+
+// Same create-if-absent-else-patch shape as setProfileReadmeOnArkiv, keyed
+// by repo_id instead of being a singleton.
+export async function setRepoReadmeOnArkiv(repoId: string, markdown: string) {
+  const readClient = getArkivClient();
+
+  const existingRepo = await repoQuery(readClient, repoId).fetch();
+  if (existingRepo.entities.length === 0) {
+    throw new ArkivWriteError(`Repository "${repoId}" does not exist.`);
+  }
+
+  const walletClient = await requireFundedSigner();
+
+  const readme: RepoReadme = { repoId, markdown, updatedAt: Math.floor(Date.now() / 1000) };
+  const existing = await repoReadmeQuery(readClient, repoId).fetch();
+  const entity = existing.entities[0];
+
+  if (!entity) {
+    const result = await walletClient.createEntity(repoReadmeEntity(readme));
     return { readme, entityKey: result.entityKey, txHash: result.txHash };
   }
 

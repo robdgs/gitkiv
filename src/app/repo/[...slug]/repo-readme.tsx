@@ -1,10 +1,12 @@
 "use client";
-import ReadmeEditor from "./readme-editor";
+import ReadmeEditor from "../../readme-editor";
 
-export default function ProfileReadme({
+export default function RepoReadme({
+  repoId,
   initialMarkdown,
   initialEntityKey,
 }: {
+  repoId: string;
   initialMarkdown: string | null;
   initialEntityKey: string | null;
 }) {
@@ -12,12 +14,12 @@ export default function ProfileReadme({
     <ReadmeEditor
       initialMarkdown={initialMarkdown}
       initialEntityKey={initialEntityKey}
-      emptyLabel="No profile README yet."
+      emptyLabel="No README yet for this repo."
       onSave={async (markdown) => {
-        const res = await fetch("/api/profile-readme", {
+        const res = await fetch("/api/repo-readme", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ markdown }),
+          body: JSON.stringify({ repoId, markdown }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Failed to save README.");

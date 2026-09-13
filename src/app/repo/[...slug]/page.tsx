@@ -6,6 +6,7 @@ import {
   getBranchesFromArkiv,
   getStarCount,
   getIssuesFromArkiv,
+  getRepoReadme,
 } from "@/lib/arkiv/read";
 import BranchSwitcher from "./branch-switcher";
 import BranchLockPanel from "./branch-lock-panel";
@@ -15,6 +16,7 @@ import LiveFeed from "./live-feed";
 import StarButton from "./star-button";
 import IssuesPanel from "./issues-panel";
 import RepoTabs from "./repo-tabs";
+import RepoReadme from "./repo-readme";
 
 export const dynamic = "force-dynamic";
 
@@ -34,11 +36,12 @@ export default async function RepoDetailPage({
   const branch = branchParam || repo.defaultBranch;
   // Arkiv compound attribute query on (repoId, branch[, author]) — no
   // sqlite, subgraph, Ponder or Postgres pipeline in this read path.
-  const [commits, realBranches, starCount, openIssues] = await Promise.all([
+  const [commits, realBranches, starCount, openIssues, readme] = await Promise.all([
     getCommitsFromArkiv(repoId, branch, author),
     getBranchesFromArkiv(repoId),
     getStarCount(repoId),
     getIssuesFromArkiv(repoId, "open"),
+    getRepoReadme(repoId),
   ]);
   // Repos created before branches existed as entities have none yet —
   // fall back to the repo's own defaultBranch rather than an empty list.
@@ -51,6 +54,9 @@ export default async function RepoDetailPage({
       <BranchLockPanel repoId={repoId} branch={branch} />
 
       <LiveFeed repoId={repoId} branch={branch} />
+
+      <div className="text-xs uppercase tracking-wide text-[#dfa8b7] mt-6 mb-2">📖 README.md</div>
+      <RepoReadme repoId={repoId} initialMarkdown={readme?.markdown ?? null} initialEntityKey={readme?.entityKey ?? null} />
 
       <div className="text-xs uppercase tracking-wide text-[#dfa8b7] mt-6 mb-2">
         Commits on {branch}

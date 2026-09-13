@@ -65,7 +65,7 @@ export default async function RepoListPage() {
 ⠀⠀⠀⠀⠀⠀⠀⠀⣴⣿⣿⣿⣿⠿⠟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀`}
       </pre>
 
-      <ProfileReadme initialMarkdown={readme?.markdown ?? null} />
+      <ProfileReadme initialMarkdown={readme?.markdown ?? null} initialEntityKey={readme?.entityKey ?? null} />
 
       <div className="mb-6">
         <ContributionGraph counts={contributionCounts} />

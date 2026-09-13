@@ -72,3 +72,12 @@ export type ProfileReadme = {
   markdown: string;
   updatedAt: number; // unix seconds
 };
+
+// A README for one repo, rendered on its repo page — same shape as
+// ProfileReadme, but keyed by repo_id (a queryable attribute) since there
+// are many of these, one per repo, unlike the profile README's singleton.
+export type RepoReadme = {
+  repoId: string;
+  markdown: string;
+  updatedAt: number; // unix seconds
+};

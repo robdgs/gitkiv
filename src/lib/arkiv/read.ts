@@ -2,7 +2,7 @@
 // Same exported shapes (Repo[], Commit[]) so call sites don't change beyond
 // the import. The read path below never touches sqlite, a subgraph, Ponder
 // or a Postgres pipeline — only Arkiv's public RPC.
-import type { Repo, Commit, BranchLock, Branch, Issue, IssueStatus, ProfileReadme } from "@/lib/types";
+import type { Repo, Commit, BranchLock, Branch, Issue, IssueStatus, ProfileReadme, RepoReadme } from "@/lib/types";
 import { getArkivClient } from "./client";
 import {
   reposQuery,
@@ -15,6 +15,7 @@ import {
   repoCommitsQuery,
   issuesQuery,
   profileReadmeQuery,
+  repoReadmeQuery,
 } from "./model";
 
 export type ActiveLock = BranchLock & { expiresAt: bigint };
@@ -165,9 +166,23 @@ export async function getContributionCounts(days = 365): Promise<Map<string, num
   return counts;
 }
 
-export async function getProfileReadme(): Promise<ProfileReadme | null> {
+export type ProfileReadmeWithKey = ProfileReadme & { entityKey: string };
+export type RepoReadmeWithKey = RepoReadme & { entityKey: string };
+
+// Carries its own entity key (see profileReadmeQuery) so the page can link
+// straight to this entity's history on the explorer — a persistent proof
+// this is a real Arkiv write, visible on every load, not just right after
+// someone saves it.
+export async function getProfileReadme(): Promise<ProfileReadmeWithKey | null> {
   const client = getArkivClient();
   const page = await profileReadmeQuery(client).fetch();
   const entity = page.entities[0];
-  return entity ? (entity.toJson() as ProfileReadme) : null;
+  return entity ? { ...(entity.toJson() as ProfileReadme), entityKey: entity.key } : null;
+}
+
+export async function getRepoReadme(repoId: string): Promise<RepoReadmeWithKey | null> {
+  const client = getArkivClient();
+  const page = await repoReadmeQuery(client, repoId).fetch();
+  const entity = page.entities[0];
+  return entity ? { ...(entity.toJson() as RepoReadme), entityKey: entity.key } : null;
 }

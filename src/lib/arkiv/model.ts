@@ -13,7 +13,7 @@
 import { ExpirationTime, jsonToPayload, type PublicArkivClient } from "@arkiv-network/sdk";
 import { str, i32 } from "@arkiv-network/sdk/attr";
 import { eq, type Expression } from "@arkiv-network/sdk/query";
-import type { Repo, Commit, BranchLock, Branch, Issue, IssueStatus, ProfileReadme } from "@/lib/types";
+import type { Repo, Commit, BranchLock, Branch, Issue, IssueStatus, ProfileReadme, RepoReadme } from "@/lib/types";
 
 // A long-lived demo lifetime. Mission 01 is about the read path, not
 // expiration (that's Mission 02) — these entities should outlive the demo.
@@ -273,4 +273,31 @@ export function profileReadmeEntity(readme: ProfileReadme) {
 
 export function profileReadmeQuery(client: PublicArkivClient) {
   return client.select({ payload: true, key: true }).where(eq("kind", str("profile_readme"))).limit(1);
+}
+
+// ---- repo README entity -------------------------------------------------
+//
+// GitHub's single most recognizable feature: a README rendered right on
+// the repo page. Same shape as the profile README, but `repo_id` is a real
+// queryable attribute here (not a singleton) since there's one of these
+// per repo — patched in place on edit, same as the profile README and the
+// star counter.
+
+export function repoReadmeEntity(readme: RepoReadme) {
+  return {
+    attributes: {
+      kind: str("repo_readme"),
+      repo_id: str(readme.repoId),
+    },
+    payload: jsonToPayload(readme),
+    contentType: "application/json",
+    expires: ENTITY_LIFETIME,
+  };
+}
+
+export function repoReadmeQuery(client: PublicArkivClient, repoId: string) {
+  return client
+    .select({ payload: true, key: true })
+    .where(eq("kind", str("repo_readme")), eq("repo_id", str(repoId)))
+    .limit(1);
 }
