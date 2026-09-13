@@ -13,7 +13,7 @@
 import { ExpirationTime, jsonToPayload, type PublicArkivClient } from "@arkiv-network/sdk";
 import { str, i32 } from "@arkiv-network/sdk/attr";
 import { eq, type Expression } from "@arkiv-network/sdk/query";
-import type { Repo, Commit, BranchLock, Branch, Issue, IssueStatus } from "@/lib/types";
+import type { Repo, Commit, BranchLock, Branch, Issue, IssueStatus, ProfileReadme } from "@/lib/types";
 
 // A long-lived demo lifetime. Mission 01 is about the read path, not
 // expiration (that's Mission 02) — these entities should outlive the demo.
@@ -249,4 +249,28 @@ export function allStarCountsQuery(client: PublicArkivClient) {
     .select({ payload: true, attributes: true })
     .where(eq("kind", str("star_count")))
     .limit(50);
+}
+
+// ---- profile README entity --------------------------------------------
+//
+// A GitHub-style profile README — a singleton, not scoped to a repo_id
+// like everything else in this model. `kind` alone is enough to find it,
+// the same reason allStarCountsQuery above needs no second filter: there's
+// only ever one of these, mutated in place via patchEntity (see
+// setProfileReadmeOnArkiv) exactly like the star counter's payload-only
+// updates.
+
+export function profileReadmeEntity(readme: ProfileReadme) {
+  return {
+    attributes: {
+      kind: str("profile_readme"),
+    },
+    payload: jsonToPayload(readme),
+    contentType: "application/json",
+    expires: ENTITY_LIFETIME,
+  };
+}
+
+export function profileReadmeQuery(client: PublicArkivClient) {
+  return client.select({ payload: true, key: true }).where(eq("kind", str("profile_readme"))).limit(1);
 }

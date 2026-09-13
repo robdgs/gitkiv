@@ -6,7 +6,7 @@ import { str } from "@arkiv-network/sdk/attr";
 import { tiramisu } from "@arkiv-network/sdk/chains";
 import { http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import type { Repo, Commit, BranchLock, Issue, IssueStatus } from "@/lib/types";
+import type { Repo, Commit, BranchLock, Issue, IssueStatus, ProfileReadme } from "@/lib/types";
 import { getArkivClient } from "./client";
 import {
   repoEntity,
@@ -23,6 +23,8 @@ import {
   issueEntity,
   issuesQuery,
   issueQuery,
+  profileReadmeEntity,
+  profileReadmeQuery,
 } from "./model";
 
 const TIRAMISU_CHAIN_ID = 7738577;
@@ -262,4 +264,29 @@ export async function setIssueStatusOnArkiv(repoId: string, number: number, stat
     contentType: "application/json",
   });
   return { issue: updated, entityKey: result.entityKey, txHash: result.txHash };
+}
+
+// Create-if-absent, else patch — same singleton pattern as the star
+// counter, just with no repo_id to key on since there's only ever one of
+// these. Rendering sanitizes the markdown (see profile-readme.tsx); this
+// only bounds its size.
+export async function setProfileReadmeOnArkiv(markdown: string) {
+  const readClient = getArkivClient();
+  const walletClient = await requireFundedSigner();
+
+  const readme: ProfileReadme = { markdown, updatedAt: Math.floor(Date.now() / 1000) };
+  const existing = await profileReadmeQuery(readClient).fetch();
+  const entity = existing.entities[0];
+
+  if (!entity) {
+    const result = await walletClient.createEntity(profileReadmeEntity(readme));
+    return { readme, entityKey: result.entityKey, txHash: result.txHash };
+  }
+
+  const result = await walletClient.patchEntity({
+    entityKey: entity.key,
+    payload: jsonToPayload(readme),
+    contentType: "application/json",
+  });
+  return { readme, entityKey: result.entityKey, txHash: result.txHash };
 }

@@ -1,17 +1,19 @@
 import Link from "next/link";
-import { getReposFromArkiv, getAllStarCounts, getContributionCounts } from "@/lib/arkiv/read";
+import { getReposFromArkiv, getAllStarCounts, getContributionCounts, getProfileReadme } from "@/lib/arkiv/read";
 import NewRepoForm from "./new-repo-form";
 import WalletProfile from "./wallet-profile";
 import ContributionGraph from "./contribution-graph";
+import ProfileReadme from "./profile-readme";
 
 // Every request queries Arkiv live — no build-time snapshot, no cache.
 export const dynamic = "force-dynamic";
 
 export default async function RepoListPage() {
-  const [repos, starCounts, contributionCounts] = await Promise.all([
+  const [repos, starCounts, contributionCounts, readme] = await Promise.all([
     getReposFromArkiv(),
     getAllStarCounts(),
     getContributionCounts(),
+    getProfileReadme(),
   ]);
   const stars = new Map(starCounts.map((s) => [s.repoId, s.count]));
   const totalStars = starCounts.reduce((sum, s) => sum + s.count, 0);
@@ -62,6 +64,8 @@ export default async function RepoListPage() {
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⣿⣿⣿⣿⣿⡿⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⣴⣿⣿⣿⣿⠿⠟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀`}
       </pre>
+
+      <ProfileReadme initialMarkdown={readme?.markdown ?? null} />
 
       <div className="mb-6">
         <ContributionGraph counts={contributionCounts} />

@@ -2,7 +2,7 @@
 // Same exported shapes (Repo[], Commit[]) so call sites don't change beyond
 // the import. The read path below never touches sqlite, a subgraph, Ponder
 // or a Postgres pipeline — only Arkiv's public RPC.
-import type { Repo, Commit, BranchLock, Branch, Issue, IssueStatus } from "@/lib/types";
+import type { Repo, Commit, BranchLock, Branch, Issue, IssueStatus, ProfileReadme } from "@/lib/types";
 import { getArkivClient } from "./client";
 import {
   reposQuery,
@@ -14,6 +14,7 @@ import {
   allStarCountsQuery,
   repoCommitsQuery,
   issuesQuery,
+  profileReadmeQuery,
 } from "./model";
 
 export type ActiveLock = BranchLock & { expiresAt: bigint };
@@ -162,4 +163,11 @@ export async function getContributionCounts(days = 365): Promise<Map<string, num
     }
   }
   return counts;
+}
+
+export async function getProfileReadme(): Promise<ProfileReadme | null> {
+  const client = getArkivClient();
+  const page = await profileReadmeQuery(client).fetch();
+  const entity = page.entities[0];
+  return entity ? (entity.toJson() as ProfileReadme) : null;
 }

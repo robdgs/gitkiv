@@ -63,3 +63,12 @@ export type Issue = {
   createdAt: number; // unix seconds
   closedAt: number | null; // unix seconds, set when status becomes "closed"
 };
+
+// GitHub-style profile README, shown on the homepage. This app has no
+// multi-user accounts — one server-signed writer key creates every
+// entity — so there's exactly one of these, a singleton, the same way a
+// GitHub profile README belongs to one account.
+export type ProfileReadme = {
+  markdown: string;
+  updatedAt: number; // unix seconds
+};
