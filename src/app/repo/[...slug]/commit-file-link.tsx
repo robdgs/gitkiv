@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useSwarmId } from "@/lib/swarm-id";
+import FilePreviewModal from "./file-preview-modal";
 
 type Props = {
   fileRef: string;
@@ -16,10 +17,15 @@ type Props = {
 // directly against a real upload (correctly reported "Website, 3 items").
 // downloadFile() is NOT used for folders here, unlike every other file in
 // this app: it walks the manifest one chunk-fetch at a time
-// (loadMantarayTreeWithChunkAPI) and that path is independently flaky
-// (intermittent 500s) even when the exact same content resolves fine
-// through a real gateway — so a plain link out is more reliable than the
-// in-app download for this one case.
+// (loadMantarayTreeWithChunkAPI), and that path was tried in-app for a
+// preview modal and reproducibly failed (two 404s and a 30s timeout, with
+// retries) against a reference that resolves fine through this same
+// gateway link at the same moment. Not a transient blip to retry around —
+// a real reliability gap in that call for folder manifests specifically.
+// Embedding the gateway URL directly in an iframe isn't a fix either: it
+// sends `Content-Disposition: attachment` on every response, forcing a
+// download instead of rendering. So a plain link out is what's actually
+// reliable here, not a downgrade taken for convenience.
 const GATEWAY = "https://gateway.ethswarm.org";
 
 // Plain downloads don't require Swarm ID authentication — only uploads do.
@@ -30,16 +36,7 @@ export default function CommitFileLink({ fileRef, fileName, encrypted, historyRe
   const { downloadFile, actDownloadFile, connect, info } = useSwarmId();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  function saveBlob(bytes: BlobPart) {
-    const blob = new Blob([bytes]);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
-  }
+  const [preview, setPreview] = useState<Uint8Array | null>(null);
 
   if (isFolder) {
     return (
@@ -62,10 +59,10 @@ export default function CommitFileLink({ fileRef, fileName, encrypted, historyRe
         if (!historyRef || !publisherKey) throw new Error("Missing ACT metadata for this file.");
         if (!info?.identity) await connect();
         const data = await actDownloadFile(fileRef, historyRef, publisherKey);
-        saveBlob(data as BlobPart);
+        setPreview(data);
       } else {
         const file = await downloadFile(fileRef);
-        saveBlob(file.data as BlobPart);
+        setPreview(file.data);
       }
     } catch (err) {
       setError(
@@ -73,7 +70,7 @@ export default function CommitFileLink({ fileRef, fileName, encrypted, historyRe
           ? "Access denied — you're not a grantee on this file."
           : err instanceof Error
             ? err.message
-            : "Failed to download from Swarm."
+            : "Failed to fetch from Swarm."
       );
     } finally {
       setLoading(false);
@@ -88,9 +85,10 @@ export default function CommitFileLink({ fileRef, fileName, encrypted, historyRe
         className="text-[#f06fa8] text-xs hover:underline cursor-pointer disabled:opacity-50"
       >
         {encrypted ? "🔒" : "📄"} {fileName}
-        {loading ? (encrypted ? " · decrypting…" : " · downloading from Swarm…") : ""}
+        {loading ? (encrypted ? " · decrypting…" : " · fetching from Swarm…") : ""}
       </button>
       {error && <span className="text-[#f06fa8] font-semibold text-xs">{error}</span>}
+      {preview && <FilePreviewModal fileName={fileName} bytes={preview} onClose={() => setPreview(null)} />}
     </span>
   );
 }
