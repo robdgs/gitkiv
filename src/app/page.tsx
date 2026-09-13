@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getReposFromArkiv, getAllStarCounts } from "@/lib/arkiv/read";
 import NewRepoForm from "./new-repo-form";
+import WalletProfile from "./wallet-profile";
 
 // Every request queries Arkiv live — no build-time snapshot, no cache.
 export const dynamic = "force-dynamic";
@@ -8,13 +9,27 @@ export const dynamic = "force-dynamic";
 export default async function RepoListPage() {
   const [repos, starCounts] = await Promise.all([getReposFromArkiv(), getAllStarCounts()]);
   const stars = new Map(starCounts.map((s) => [s.repoId, s.count]));
+  const totalStars = starCounts.reduce((sum, s) => sum + s.count, 0);
   const starredRepos = repos
     .map((repo) => ({ ...repo, stars: stars.get(repo.id) ?? 0 }))
     .filter((repo) => repo.stars > 0)
     .sort((a, b) => b.stars - a.stars);
 
   return (
-    <div>
+    <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-6 items-start">
+      <aside className="flex flex-col gap-4 md:sticky md:top-6">
+        <WalletProfile />
+        <div className="flex flex-col gap-1.5 text-xs text-[#dfa8b7] px-1">
+          <div>
+            <span className="text-[#fff8fa] font-bold">{repos.length}</span> repositories
+          </div>
+          <div>
+            <span className="text-[#fff8fa] font-bold">{totalStars}</span> stars given
+          </div>
+        </div>
+      </aside>
+
+      <div>
       <pre
         aria-hidden="true"
         className="text-[#f06fa8] text-[9px] sm:text-xs leading-[1.05] text-center select-none overflow-x-auto mb-4"
@@ -42,28 +57,6 @@ export default async function RepoListPage() {
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⣿⣿⣿⣿⣿⡿⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⣴⣿⣿⣿⣿⠿⠟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀`}
       </pre>
-
-      {starredRepos.length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-xs uppercase tracking-wide text-[#dfa8b7] mb-2">⭐ Starred repositories</h2>
-          <ul className="flex flex-col gap-2">
-            {starredRepos.map((repo) => (
-              <li key={repo.id}>
-                <Link
-                  href={`/repo/${repo.id}`}
-                  className="flex items-center justify-between gap-4 border border-[#c98799]/40 bg-[#c98799]/5 rounded-md p-3 hover:border-[#f06fa8] transition-colors no-underline hover:no-underline"
-                >
-                  <div>
-                    <div className="font-bold text-[#f06fa8]">{repo.id}</div>
-                    <p className="text-xs text-[#dfa8b7] mt-0.5">{repo.description}</p>
-                  </div>
-                  <span className="text-sm text-[#fff8fa] whitespace-nowrap">⭐ {repo.stars}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       <h1 className="text-xl font-bold text-[#fff8fa] mb-1">Repositories</h1>
       <p className="text-sm text-[#dfa8b7] mb-4">
@@ -106,6 +99,29 @@ export default async function RepoListPage() {
           </li>
         ))}
       </ul>
+
+      {starredRepos.length > 0 && (
+        <div className="mt-6">
+          <h2 className="text-xs uppercase tracking-wide text-[#dfa8b7] mb-2">⭐ Starred repositories</h2>
+          <ul className="flex flex-col gap-2">
+            {starredRepos.map((repo) => (
+              <li key={repo.id}>
+                <Link
+                  href={`/repo/${repo.id}`}
+                  className="flex items-center justify-between gap-4 border border-[#c98799]/40 bg-[#c98799]/5 rounded-md p-3 hover:border-[#f06fa8] transition-colors no-underline hover:no-underline"
+                >
+                  <div>
+                    <div className="font-bold text-[#f06fa8]">{repo.id}</div>
+                    <p className="text-xs text-[#dfa8b7] mt-0.5">{repo.description}</p>
+                  </div>
+                  <span className="text-sm text-[#fff8fa] whitespace-nowrap">⭐ {repo.stars}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      </div>
     </div>
   );
 }
