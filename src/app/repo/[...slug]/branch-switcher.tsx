@@ -58,21 +58,29 @@ export default function BranchSwitcher({
   return (
     <div className="border border-[#6b4552] rounded-md p-4 flex flex-col gap-4">
       <div>
-        <div className="text-xs uppercase tracking-wide text-[#dfa8b7] mb-2">Branch</div>
         <div className="flex flex-wrap items-center gap-2">
-          {branches.map((b) => (
-            <button
-              key={b}
-              onClick={() => go(b, author || undefined)}
-              className={`px-3 py-1.5 rounded-md border text-sm cursor-pointer transition-colors ${
-                b === currentBranch
-                  ? "border-[#f06fa8] bg-[#f06fa8]/15 text-[#f06fa8]"
-                  : "border-[#6b4552] text-[#fff8fa] hover:border-[#f06fa8]"
-              }`}
+          <div className="relative">
+            <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[#f06fa8]">
+              ⑂
+            </span>
+            <select
+              value={currentBranch}
+              onChange={(e) => go(e.target.value, author || undefined)}
+              className="appearance-none bg-[#3d2632] border border-[#6b4552] rounded-md pl-7 pr-7 py-1.5 text-sm font-bold text-[#fff8fa] hover:border-[#f06fa8] cursor-pointer focus:outline-none focus:border-[#f06fa8]"
             >
-              {b}
-            </button>
-          ))}
+              {branches.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
+            </select>
+            <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[#dfa8b7] text-xs">
+              ▾
+            </span>
+          </div>
+          <span className="text-xs text-[#dfa8b7]">
+            {branches.length} branch{branches.length === 1 ? "" : "es"}
+          </span>
           {!showNewBranch ? (
             <button
               type="button"
