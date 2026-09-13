@@ -1,13 +1,18 @@
 import Link from "next/link";
-import { getReposFromArkiv, getAllStarCounts } from "@/lib/arkiv/read";
+import { getReposFromArkiv, getAllStarCounts, getContributionCounts } from "@/lib/arkiv/read";
 import NewRepoForm from "./new-repo-form";
 import WalletProfile from "./wallet-profile";
+import ContributionGraph from "./contribution-graph";
 
 // Every request queries Arkiv live — no build-time snapshot, no cache.
 export const dynamic = "force-dynamic";
 
 export default async function RepoListPage() {
-  const [repos, starCounts] = await Promise.all([getReposFromArkiv(), getAllStarCounts()]);
+  const [repos, starCounts, contributionCounts] = await Promise.all([
+    getReposFromArkiv(),
+    getAllStarCounts(),
+    getContributionCounts(),
+  ]);
   const stars = new Map(starCounts.map((s) => [s.repoId, s.count]));
   const totalStars = starCounts.reduce((sum, s) => sum + s.count, 0);
   const starredRepos = repos
@@ -57,6 +62,10 @@ export default async function RepoListPage() {
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⣿⣿⣿⣿⣿⡿⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⣴⣿⣿⣿⣿⠿⠟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀`}
       </pre>
+
+      <div className="mb-6">
+        <ContributionGraph counts={contributionCounts} />
+      </div>
 
       <h1 className="text-xl font-bold text-[#fff8fa] mb-1">Repositories</h1>
       <p className="text-sm text-[#dfa8b7] mb-4">

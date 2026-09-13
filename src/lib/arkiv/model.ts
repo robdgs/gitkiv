@@ -116,9 +116,11 @@ export function commitEntity(commit: Commit) {
   };
 }
 
-// Every commit in a repo regardless of branch — used only to derive a
-// branch list for repos created before branch entities existed (see
-// getBranchesFromArkiv's legacy fallback), never as a read path of its own.
+// Every commit in a repo regardless of branch. Originally added only to
+// derive a branch list for repos created before branch entities existed
+// (see getBranchesFromArkiv's legacy fallback) — also reused now for the
+// homepage contribution graph, which counts every commit by day regardless
+// of which branch it landed on.
 export function repoCommitsQuery(client: PublicArkivClient, repoId: string) {
   return client
     .select({ payload: true })

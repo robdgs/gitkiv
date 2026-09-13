@@ -138,3 +138,28 @@ export async function getIssuesFromArkiv(repoId: string, status?: IssueStatus): 
   const issues = page.entities.map((entity) => ({ ...(entity.toJson() as Issue), entityKey: entity.key }));
   return issues.sort((a, b) => b.number - a.number);
 }
+
+// For the homepage's GitHub-style contribution graph: every commit across
+// every repo (any branch), bucketed by calendar day. Scoped to the known
+// repo list rather than a bare `kind=commit` query with no repo_id filter —
+// this writer wallet is a shared testnet demo key also used by unrelated
+// tools (see feedback.md), so an unscoped query risks pulling in
+// "commit"-kind entities that have nothing to do with this app.
+export async function getContributionCounts(days = 365): Promise<Map<string, number>> {
+  const client = getArkivClient();
+  const repos = await reposQuery(client).fetch();
+  const repoIds = repos.entities.map((entity) => (entity.toJson() as Repo).id);
+  const pages = await Promise.all(repoIds.map((id) => repoCommitsQuery(client, id).fetch()));
+
+  const cutoff = Math.floor(Date.now() / 1000) - days * 86400;
+  const counts = new Map<string, number>();
+  for (const page of pages) {
+    for (const entity of page.entities) {
+      const commit = entity.toJson() as Commit;
+      if (commit.timestamp < cutoff) continue;
+      const day = new Date(commit.timestamp * 1000).toISOString().slice(0, 10);
+      counts.set(day, (counts.get(day) ?? 0) + 1);
+    }
+  }
+  return counts;
+}
